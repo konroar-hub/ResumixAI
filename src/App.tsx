@@ -297,31 +297,21 @@ export default function App() {
       const targetRoleName = stage1CompanyName ? `${stage1CompanyName} Role` : (newResumeRole || 'Target Role');
       const generatedCustomCards: ExperienceItem[] = [];
 
-      const selectedMasterIds = new Set(res.selectedCardIds || []);
-      if (selectedMasterIds.size === 0) {
-        (parsedProfile?.experiences || []).slice(0, 2).forEach(e => selectedMasterIds.add(e.id));
-      }
-
-      // 1. Process ONLY Gemini RECOMMENDED experience and project cards
-      const recommendedMasterCards = (parsedProfile?.experiences || []).filter(e => {
-        const cat = e.category || 'experience';
-        return selectedMasterIds.has(e.id) && (cat === 'experience' || cat === 'project');
-      });
-
-      recommendedMasterCards.forEach(origCard => {
-        const override = (res.tailoredCardOverrides || []).find(o => o.id === origCard.id);
-        const bulletsToUse = (override && override.tailoredBullets && override.tailoredBullets.length > 0)
-          ? override.tailoredBullets
-          : (origCard.bullets || []).map(b => typeof b === 'string' ? b : b.text);
-
-        generatedCustomCards.push({
-          ...origCard,
-          id: `ai-tailored-${origCard.id}-${Date.now()}`,
-          bullets: bulletsToUse,
-          isAiTailored: true,
-          tailoredForRole: targetRoleName
+      // 1. Process Tailored Card Overrides for Experience & Project cards from Gemini AI
+      if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
+        res.tailoredCardOverrides.forEach(override => {
+          const origCard = (parsedProfile?.experiences || []).find(e => e.id === override.id);
+          if (origCard && override.tailoredBullets && override.tailoredBullets.length > 0) {
+            generatedCustomCards.push({
+              ...origCard,
+              id: `ai-tailored-${origCard.id}-${Date.now()}`,
+              bullets: override.tailoredBullets,
+              isAiTailored: true,
+              tailoredForRole: targetRoleName
+            });
+          }
         });
-      });
+      }
 
       // 2. Auto-generate About Card if missing in Master Profile
       const existingAboutCard = (parsedProfile?.experiences || []).find(e => (e.category || 'experience') === 'about');
@@ -341,17 +331,6 @@ export default function App() {
           isAiTailored: true,
           tailoredForRole: targetRoleName
         });
-      } else if (selectedMasterIds.has(existingAboutCard.id)) {
-        const overrideAbout = (res.tailoredCardOverrides || []).find(o => o.id === existingAboutCard.id);
-        if (overrideAbout && overrideAbout.tailoredBullets?.length > 0) {
-          generatedCustomCards.push({
-            ...existingAboutCard,
-            id: `ai-tailored-${existingAboutCard.id}-${Date.now()}`,
-            bullets: overrideAbout.tailoredBullets,
-            isAiTailored: true,
-            tailoredForRole: targetRoleName
-          });
-        }
       }
 
       // Store variant-specific AI tailored cards without altering Master Repository
@@ -359,7 +338,7 @@ export default function App() {
 
       const aiCardIds = generatedCustomCards.map(c => c.id);
 
-      // Include education card IDs that were recommended or present
+      // Pre-select education cards by default
       const eduCardIds = (parsedProfile?.experiences || [])
         .filter(e => (e.category || 'experience') === 'education')
         .map(e => e.id);
