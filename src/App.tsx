@@ -1144,7 +1144,7 @@ export default function App() {
                                       : 'text-slate-400 hover:text-slate-200'
                                   }`}
                                 >
-                                  <span>{sec}</span>
+                                  <span>{sec === 'about' ? 'About Me' : sec}</span>
                                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                                     isCurrent ? 'bg-indigo-800 text-white' : 'bg-slate-800 text-slate-300'
                                   }`}>
@@ -1536,7 +1536,31 @@ export default function App() {
                       </p>
                     </div>
 
-                    {/* Technical Skills & Core Competencies Right Under Summary */}
+                    {/* 1. About Me (First Thing Below Contact Details) */}
+                    {(() => {
+                      const items = (parsedProfile?.experiences || []).filter(e => 
+                        (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                      );
+                      const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === 'about');
+                      const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                      const totalAboutItems = [...customItems, ...unTailoredItems];
+                      if (totalAboutItems.length === 0) return null;
+
+                      return (
+                        <div className="space-y-1.5">
+                          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-0.5">
+                            About Me
+                          </h2>
+                          {totalAboutItems.map(exp => (
+                            <p key={exp.id} className="text-[11px] text-slate-800 leading-relaxed">
+                              {formatBulletText(exp.bullets?.[0] || '')}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                    {/* 2. Technical Skills & Core Competencies (Below About Me) */}
                     {(() => {
                       const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
                         ? activeResume.selectedSkills
@@ -1556,8 +1580,8 @@ export default function App() {
                       );
                     })()}
 
-                    {/* Section Cards Rendered in Order */}
-                    {SECTION_ORDER.filter(s => s !== 'skills').map(sec => {
+                    {/* 3. Section Cards Rendered in Order (Experience, Project, Education) */}
+                    {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
                       const items = (parsedProfile?.experiences || []).filter(e => 
                         (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
                       );
@@ -1573,23 +1597,15 @@ export default function App() {
                           </h2>
                           {totalItems.map(exp => (
                             <div key={exp.id} className="space-y-0.5">
-                              {sec !== 'about' && (
-                                <div className="flex justify-between items-baseline text-[11px]">
-                                  <span className="font-bold text-slate-900">{exp.title}</span>
-                                  <span className="font-semibold text-slate-700">{exp.company} | {exp.period}</span>
-                                </div>
-                              )}
-                              {sec === 'about' ? (
-                                <p className="text-[11px] text-slate-800 leading-relaxed">
-                                  {formatBulletText(exp.bullets?.[0] || '')}
-                                </p>
-                              ) : (
-                                <ul className="list-disc list-inside text-[11px] text-slate-800 space-y-0.5">
-                                  {exp.bullets?.map((b, i) => (
-                                    <li key={i}>{formatBulletText(b)}</li>
-                                  ))}
-                                </ul>
-                              )}
+                              <div className="flex justify-between items-baseline text-[11px]">
+                                <span className="font-bold text-slate-900">{exp.title}</span>
+                                <span className="font-semibold text-slate-700">{exp.company} | {exp.period}</span>
+                              </div>
+                              <ul className="list-disc list-inside text-[11px] text-slate-800 space-y-0.5">
+                                {exp.bullets?.map((b, i) => (
+                                  <li key={i}>{formatBulletText(b)}</li>
+                                ))}
+                              </ul>
                             </div>
                           ))}
                         </div>
