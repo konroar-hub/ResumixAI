@@ -290,20 +290,22 @@ export default function App() {
       const targetRoleName = stage1CompanyName ? `${stage1CompanyName} Role` : (newResumeRole || 'Target Role');
       const generatedCustomCards: ExperienceItem[] = [];
 
-      // 1. Process Tailored Card Overrides for Experience & Project cards
-      const targetCardsToTailor = (parsedProfile?.experiences || []).filter(e => {
+      const selectedMasterIds = new Set(res.selectedCardIds || []);
+      if (selectedMasterIds.size === 0) {
+        (parsedProfile?.experiences || []).slice(0, 2).forEach(e => selectedMasterIds.add(e.id));
+      }
+
+      // 1. Process ONLY Gemini RECOMMENDED experience and project cards
+      const recommendedMasterCards = (parsedProfile?.experiences || []).filter(e => {
         const cat = e.category || 'experience';
-        return cat === 'experience' || cat === 'project';
+        return selectedMasterIds.has(e.id) && (cat === 'experience' || cat === 'project');
       });
 
-      targetCardsToTailor.forEach(origCard => {
+      recommendedMasterCards.forEach(origCard => {
         const override = (res.tailoredCardOverrides || []).find(o => o.id === origCard.id);
         const bulletsToUse = (override && override.tailoredBullets && override.tailoredBullets.length > 0)
           ? override.tailoredBullets
-          : (origCard.bullets || []).map(b => {
-              const text = typeof b === 'string' ? b : b.text;
-              return `${text} — Tailored for ${targetRoleName}`;
-            });
+          : (origCard.bullets || []).map(b => typeof b === 'string' ? b : b.text);
 
         generatedCustomCards.push({
           ...origCard,
@@ -320,8 +322,8 @@ export default function App() {
         const aboutBullets = res.generatedAboutCard?.bullets && res.generatedAboutCard.bullets.length > 0
           ? res.generatedAboutCard.bullets
           : [
-              `Accomplished specialist targeting ${targetRoleName} opportunities with expertise aligned to job requirements.`,
-              `Proven track record delivering technical implementations and driving core metrics.`
+              `Accomplished specialist targeting ${targetRoleName} opportunities with technical expertise.`,
+              `Proven track record delivering scalable solutions aligned to job requirements.`
             ];
 
         generatedCustomCards.push({
@@ -336,7 +338,7 @@ export default function App() {
           isAiTailored: true,
           tailoredForRole: targetRoleName
         });
-      } else {
+      } else if (selectedMasterIds.has(existingAboutCard.id)) {
         const overrideAbout = (res.tailoredCardOverrides || []).find(o => o.id === existingAboutCard.id);
         if (overrideAbout && overrideAbout.tailoredBullets?.length > 0) {
           generatedCustomCards.push({
@@ -354,7 +356,7 @@ export default function App() {
 
       const aiCardIds = generatedCustomCards.map(c => c.id);
 
-      // Include education cards by default
+      // Include education card IDs that were recommended or present
       const eduCardIds = (parsedProfile?.experiences || [])
         .filter(e => (e.category || 'experience') === 'education')
         .map(e => e.id);
