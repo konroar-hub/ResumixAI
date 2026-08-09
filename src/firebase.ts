@@ -7,6 +7,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
   User
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
@@ -27,6 +29,14 @@ export const isFirebaseConfigured = Boolean(
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Enforce persistent auth session across page reloads & browser restarts
+if (isFirebaseConfigured) {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.error('Firebase persistence setup error:', err);
+  });
+}
+
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 

@@ -112,16 +112,23 @@ Here is the resume to convert:
 export default function App() {
   const [viewMode, setViewMode] = useState<'splash' | 'app'>('splash');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumes' | 'skills' | 'feed' | 'jobs'>('resumes');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Observe Firebase Auth State
+  // Observe Firebase Auth State with persistent session restore
   useEffect(() => {
     if (isFirebaseConfigured) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user);
+        setIsAuthLoading(false);
+        if (user) {
+          setViewMode('app');
+        }
       });
       return () => unsubscribe();
+    } else {
+      setIsAuthLoading(false);
     }
   }, []);
 
@@ -797,7 +804,20 @@ export default function App() {
     ? true
     : currentCategoryCards.length === 0 || currentCategorySelectedCount > 0;
 
-  if (viewMode === 'splash' || (!currentUser && isFirebaseConfigured)) {
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+        <span className="text-xs text-slate-400 font-mono tracking-wider">Restoring Session...</span>
+      </div>
+    );
+  }
+
+  if (!currentUser && isFirebaseConfigured) {
+    return <SplashPage onEnterApp={() => setViewMode('app')} currentUser={currentUser} />;
+  }
+
+  if (viewMode === 'splash') {
     return <SplashPage onEnterApp={() => setViewMode('app')} currentUser={currentUser} />;
   }
 
