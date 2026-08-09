@@ -319,12 +319,8 @@ export default function App() {
       // 2. Auto-generate About Card if missing in Master Profile
       const existingAboutCard = (parsedProfile?.experiences || []).find(e => (e.category || 'experience') === 'about');
       if (!existingAboutCard) {
-        const aboutBullets = res.generatedAboutCard?.bullets && res.generatedAboutCard.bullets.length > 0
-          ? res.generatedAboutCard.bullets
-          : [
-              `Accomplished specialist targeting ${targetRoleName} opportunities with technical expertise.`,
-              `Proven track record delivering scalable solutions aligned to job requirements.`
-            ];
+        const aboutParagraph = res.generatedAboutCard?.paragraph?.trim() ||
+          `Accomplished specialist targeting ${targetRoleName} opportunities with specialized technical expertise and a proven track record delivering scalable solutions.`;
 
         generatedCustomCards.push({
           id: `ai-tailored-about-${Date.now()}`,
@@ -334,7 +330,7 @@ export default function App() {
           period: '',
           location: '',
           skills: [],
-          bullets: aboutBullets,
+          bullets: [aboutParagraph],
           isAiTailored: true,
           tailoredForRole: targetRoleName
         });
@@ -1286,11 +1282,17 @@ export default function App() {
                                             </div>
                                           )}
 
+                                        {exp.category === 'about' ? (
+                                          <p className="mt-2 text-xs text-slate-300 leading-relaxed">
+                                            {formatBulletText(exp.bullets?.[0] || '')}
+                                          </p>
+                                        ) : (
                                           <ul className="mt-2.5 space-y-1 text-xs text-slate-300 list-disc list-inside">
                                             {exp.bullets?.map((b, i) => (
                                               <li key={i}>{formatBulletText(b)}</li>
                                             ))}
                                           </ul>
+                                        )}
                                         </div>
                                       );
                                     });
@@ -1524,15 +1526,23 @@ export default function App() {
                           </h2>
                           {totalItems.map(exp => (
                             <div key={exp.id} className="space-y-0.5">
-                              <div className="flex justify-between items-baseline text-[11px]">
-                                <span className="font-bold text-slate-900">{exp.title}</span>
-                                <span className="font-semibold text-slate-700">{exp.company} | {exp.period}</span>
-                              </div>
-                              <ul className="list-disc list-inside text-[11px] text-slate-800 space-y-0.5">
-                                {exp.bullets?.map((b, i) => (
-                                  <li key={i}>{formatBulletText(b)}</li>
-                                ))}
-                              </ul>
+                              {sec !== 'about' && (
+                                <div className="flex justify-between items-baseline text-[11px]">
+                                  <span className="font-bold text-slate-900">{exp.title}</span>
+                                  <span className="font-semibold text-slate-700">{exp.company} | {exp.period}</span>
+                                </div>
+                              )}
+                              {sec === 'about' ? (
+                                <p className="text-[11px] text-slate-800 leading-relaxed">
+                                  {formatBulletText(exp.bullets?.[0] || '')}
+                                </p>
+                              ) : (
+                                <ul className="list-disc list-inside text-[11px] text-slate-800 space-y-0.5">
+                                  {exp.bullets?.map((b, i) => (
+                                    <li key={i}>{formatBulletText(b)}</li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -2069,60 +2079,72 @@ export default function App() {
                 </>
               )}
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-medium text-slate-400">Bullet Achievements (Distinct Entities)</label>
-                  <button
-                    type="button"
-                    onClick={() => setCardFormBulletList([...cardFormBulletList, { id: `b-${Date.now()}-${cardFormBulletList.length}`, text: '' }])}
-                    className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-950/60 border border-indigo-800 px-2 py-0.5 rounded"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Bullet</span>
-                  </button>
+              {cardFormCategory === 'about' ? (
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-medium text-slate-400">About Bio Paragraph (Cohesive Paragraph)</label>
+                  <textarea
+                    value={cardFormBulletList[0]?.text || ''}
+                    onChange={(e) => setCardFormBulletList([{ id: 'b-about-0', text: e.target.value }])}
+                    placeholder="Enter cohesive about bio paragraph..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-28 resize-none"
+                  />
                 </div>
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-                  {cardFormBulletList.map((item, idx) => (
-                    <div key={item.id} className="flex items-center space-x-2">
-                      <span className="text-[10px] text-slate-500 font-mono w-12 truncate">{item.id.slice(-5)}</span>
-                      <input
-                        type="text"
-                        value={item.text}
-                        onChange={(e) => {
-                          const updated = [...cardFormBulletList];
-                          updated[idx] = { ...updated[idx], text: e.target.value };
-                          setCardFormBulletList(updated);
-                        }}
-                        placeholder="Enter bullet achievement text..."
-                        className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAiEnhanceBullet(idx)}
-                        disabled={!item.text.trim() || enhancingBulletIndex === idx}
-                        className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2 py-1 rounded transition disabled:opacity-40"
-                        title="Enhance Bullet with Gemini AI"
-                      >
-                        {enhancingBulletIndex === idx ? (
-                          <span className="w-3 h-3 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
-                        ) : (
-                          <Wand2 className="w-3 h-3 text-indigo-400" />
-                        )}
-                        <span className="hidden sm:inline">AI Enhance</span>
-                      </button>
-                      {cardFormBulletList.length > 1 && (
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-medium text-slate-400">Bullet Achievements (Distinct Entities)</label>
+                    <button
+                      type="button"
+                      onClick={() => setCardFormBulletList([...cardFormBulletList, { id: `b-${Date.now()}-${cardFormBulletList.length}`, text: '' }])}
+                      className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-950/60 border border-indigo-800 px-2 py-0.5 rounded"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Bullet</span>
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                    {cardFormBulletList.map((item, idx) => (
+                      <div key={item.id} className="flex items-center space-x-2">
+                        <span className="text-[10px] text-slate-500 font-mono w-12 truncate">{item.id.slice(-5)}</span>
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) => {
+                            const updated = [...cardFormBulletList];
+                            updated[idx] = { ...updated[idx], text: e.target.value };
+                            setCardFormBulletList(updated);
+                          }}
+                          placeholder="Enter bullet achievement text..."
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                        />
                         <button
                           type="button"
-                          onClick={() => setCardFormBulletList(cardFormBulletList.filter((_, i) => i !== idx))}
-                          className="text-slate-500 hover:text-rose-400 text-xs p-1"
+                          onClick={() => handleAiEnhanceBullet(idx)}
+                          disabled={!item.text.trim() || enhancingBulletIndex === idx}
+                          className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2 py-1 rounded transition disabled:opacity-40"
+                          title="Enhance Bullet with Gemini AI"
                         >
-                          ✕
+                          {enhancingBulletIndex === idx ? (
+                            <span className="w-3 h-3 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
+                          ) : (
+                            <Wand2 className="w-3 h-3 text-indigo-400" />
+                          )}
+                          <span className="hidden sm:inline">AI Enhance</span>
                         </button>
-                      )}
-                    </div>
-                  ))}
+                        {cardFormBulletList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setCardFormBulletList(cardFormBulletList.filter((_, i) => i !== idx))}
+                            className="text-slate-500 hover:text-rose-400 text-xs p-1"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-3 border-t border-slate-800 pt-3">

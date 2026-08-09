@@ -15,7 +15,7 @@ export interface TailoredCardOverride {
 
 export interface GeneratedAboutCard {
   title: string;
-  bullets: string[];
+  paragraph: string;
 }
 
 export interface GeminiTailorResponse {
@@ -36,7 +36,7 @@ export interface GeminiJobAnalysis {
 /**
  * 1. AI Job Posting Tailoring & Card Rewriting (gemini-2.5-flash)
  * Matches master experience & project cards to target job posting text, extracts skills, rewrites bullets
- * strictly aligned to job description keywords without inventing facts, and auto-generates About card if missing.
+ * strictly aligned to job description keywords without inventing facts, and auto-generates About card paragraph if missing.
  */
 export async function tailorResumeWithGemini(
   masterProfile: MasterProfile,
@@ -88,7 +88,7 @@ INSTRUCTIONS:
 2. For EACH selected 'experience' and 'project' card, rewrite its bullet points to naturally incorporate target job keywords.
    STRICT RULE: Base bullet rewrites STRICTLY on existing true facts in the card. DO NOT FABRICATE, INVENT, OR MAKE UP FALSE EXPERIENCES, COMPANIES, OR METRICS.
 3. DO NOT TAILOR EDUCATION CARDS.
-${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Since no 'about' card exists, generate a 2-bullet About Bio card tailored for this target role." : "4. If an 'about' card exists, rewrite its bullets to fit the target role."}
+${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Since no 'about' card exists, generate a single cohesive About Bio paragraph (NOT bullet points) tailored for this target role." : "4. If an 'about' card exists, rewrite its paragraph text to fit the target role."}
 
 Return valid JSON ONLY (no markdown code blocks, no trailing comments):
 {
@@ -105,7 +105,7 @@ Return valid JSON ONLY (no markdown code blocks, no trailing comments):
       ]
     }
   ],
-  ${!hasAboutCard ? '"generatedAboutCard": { "title": "Professional Bio & Summary", "bullets": ["Senior Engineer specializing in scalable web systems and modern frontend architectures.", "Proven track record delivering high-impact features matching enterprise requirements."] }' : '"generatedAboutCard": null'}
+  ${!hasAboutCard ? '"generatedAboutCard": { "title": "Professional Bio & Summary", "paragraph": "Senior Full Stack Engineer specializing in modern web architecture and cloud deployments. Proven track record driving engineering excellence and delivering scalable solutions." }' : '"generatedAboutCard": null'}
 }
 
 CANDIDATE CARDS:
@@ -178,7 +178,7 @@ experiences:
   - id: "about-1"
     category: "about"
     title: "Bio"
-    bullets: ["bullet"]
+    bullets: ["Cohesive about paragraph..."]
   - id: "exp-1"
     category: "experience"
     title: "Job Title"
@@ -208,9 +208,9 @@ export async function enhanceBulletWithGemini(rawBulletText: string, contextTitl
   if (!ai || !rawBulletText.trim()) return rawBulletText;
 
   try {
-    const prompt = `Rewrite this resume bullet point into 1 concise, high-impact ATS achievement statement with strong action verbs and quantified impact metrics. Base rewrites strictly on true facts without inventing false details. Return statement only without quotes:
+    const prompt = `Rewrite this resume text into 1 concise, high-impact ATS achievement statement with strong action verbs and quantified impact metrics. Base rewrites strictly on true facts without inventing false details. Return statement only without quotes:
 CONTEXT: ${contextTitle}
-BULLET: ${rawBulletText}`;
+TEXT: ${rawBulletText}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
