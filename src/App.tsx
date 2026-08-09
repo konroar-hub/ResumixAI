@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { INITIAL_MASTER_YAML, INITIAL_RESUMES, DEFAULT_JOB_TRACKER } from './mockData';
-import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord, AtsAnalysisDetails } from './types';
+import { INITIAL_MASTER_YAML, INITIAL_RESUMES, DEFAULT_JOB_TRACKER, DEFAULT_RESUME_STYLES } from './mockData';
+import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord, AtsAnalysisDetails, ResumeStyle } from './types';
 import yaml from 'js-yaml';
 import { 
   Layers, 
@@ -31,14 +31,16 @@ import {
   User as UserIcon,
   LogOut,
   Zap,
-  GitFork
+  GitFork,
+  Palette
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
 import {
   tailorResumeWithGemini,
   convertResumeTextToYamlWithGemini,
   enhanceBulletWithGemini,
-  analyzeJobMatchWithGemini
+  analyzeJobMatchWithGemini,
+  generateResumeStyleWithGemini
 } from './services/geminiService';
 import {
   auth,
@@ -169,6 +171,28 @@ export default function App() {
     return DEFAULT_JOB_TRACKER;
   });
 
+  // LocalStorage & Firestore Persisted Resume Styles State
+  const [resumeStyles, setResumeStyles] = useState<ResumeStyle[]>(() => {
+    try {
+      const saved = localStorage.getItem('rt_styles');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_RESUME_STYLES;
+  });
+
+  const [activeStyleId, setActiveStyleId] = useState<string>(() => {
+    return resumeStyles[0]?.id || 'style-executive';
+  });
+
+  const [isAiStyleModalOpen, setIsAiStyleModalOpen] = useState(false);
+  const [aiStylePromptInput, setAiStylePromptInput] = useState('');
+  const [isGeneratingAiStyle, setIsGeneratingAiStyle] = useState(false);
+  const [previewAiStyle, setPreviewAiStyle] = useState<ResumeStyle | null>(null);
+
+  const activeStyle = useMemo(() => {
+    return resumeStyles.find(s => s.id === activeStyleId) || resumeStyles[0] || DEFAULT_RESUME_STYLES[0];
+  }, [resumeStyles, activeStyleId]);
+
   // Load data from Firestore when user logs in
   useEffect(() => {
     if (currentUser?.uid) {
@@ -177,6 +201,7 @@ export default function App() {
           if (cloudData.profile) setParsedProfile(cloudData.profile);
           if (cloudData.resumes) setResumes(cloudData.resumes);
           if (cloudData.jobsList) setJobsList(cloudData.jobsList);
+          if (cloudData.resumeStyles) setResumeStyles(cloudData.resumeStyles);
         }
       });
     }
@@ -209,6 +234,15 @@ export default function App() {
       saveUserDataToFirestore(currentUser.uid, { jobsList });
     }
   }, [jobsList, currentUser]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rt_styles', JSON.stringify(resumeStyles));
+    } catch (e) {}
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { resumeStyles });
+    }
+  }, [resumeStyles, currentUser]);
   const [jobDescription, setJobDescription] = useState('');
   const [viewingJobDescription, setViewingJobDescription] = useState<JobRecord | null>(null);
   const [viewingAtsAnalysisJob, setViewingAtsAnalysisJob] = useState<JobRecord | null>(null);
@@ -1088,6 +1122,87 @@ export default function App() {
         <div className="flex-1 p-3.5 sm:p-6 overflow-y-auto">
           {activeTab === 'resumes' && (
             <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+              {/* Resume Styles Horizontal Bar */}
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 shadow-md">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center space-x-2">
+                    <Palette className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-sm font-bold text-white">Resume Design Styles & Templates</h3>
+                    <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-0.5 rounded-full font-mono font-semibold">
+                      AI Compatible with All Resumes
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiStylePromptInput('');
+                      setPreviewAiStyle(null);
+                      setIsAiStyleModalOpen(true);
+                    }}
+                    className="flex items-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow transition shrink-0"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                    <span>+ Create AI Resume Style</span>
+                  </button>
+                </div>
+
+                {/* Horizontal Scrollable List of Portrait Document Tiles */}
+                <div className="overflow-x-auto max-w-full pb-2">
+                  <div className="flex space-x-3.5 min-w-max">
+                    {resumeStyles.map(st => {
+                      const isActive = activeStyleId === st.id;
+                      return (
+                        <div
+                          key={st.id}
+                          onClick={() => setActiveStyleId(st.id)}
+                          className={`cursor-pointer group relative w-36 h-44 rounded-xl p-2.5 flex flex-col justify-between border-2 transition-all shadow-md ${
+                            isActive
+                              ? 'border-indigo-500 ring-2 ring-indigo-500/40 scale-[1.02] shadow-indigo-950/60'
+                              : 'border-slate-800 hover:border-slate-700 bg-slate-950/60 opacity-80 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: st.theme.bgColor }}
+                        >
+                          {/* Tile Header & Mini Preview lines */}
+                          <div className="space-y-1.5">
+                            <div
+                              className="h-3 rounded flex items-center px-1.5 text-[7px] font-bold truncate"
+                              style={{ backgroundColor: st.theme.primaryColor, color: '#ffffff' }}
+                            >
+                              {st.name}
+                            </div>
+
+                            <div className="space-y-1 pt-1 opacity-70">
+                              <div className="h-1 w-3/4 rounded" style={{ backgroundColor: st.theme.textColor }} />
+                              <div className="h-1 w-1/2 rounded" style={{ backgroundColor: st.theme.accentColor }} />
+                              <div className="h-1 w-full rounded" style={{ backgroundColor: st.theme.dividerColor }} />
+                              <div className="h-1.5 w-5/6 rounded mt-1" style={{ backgroundColor: st.theme.primaryColor }} />
+                              <div className="h-1 w-2/3 rounded" style={{ backgroundColor: st.theme.textColor }} />
+                            </div>
+                          </div>
+
+                          {/* Tile Footer Info */}
+                          <div className="pt-1.5 border-t border-slate-200/20 text-[9px] space-y-0.5">
+                            <div className="font-bold truncate" style={{ color: st.theme.textColor }}>
+                              {st.name}
+                            </div>
+                            <div className="text-[8px] opacity-70 truncate" style={{ color: st.theme.textColor }}>
+                              {st.isAiGenerated ? '✨ AI Custom' : st.theme.fontFamily}
+                            </div>
+                          </div>
+
+                          {isActive && (
+                            <span className="absolute -top-2 -right-1 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border border-indigo-400">
+                              ✓ Active
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* Header Bar with Pop-up Create Button */}
               <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div>
@@ -1644,12 +1759,32 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <div className="bg-white text-slate-900 p-6 sm:p-8 rounded-b-xl shadow-2xl border border-slate-300 space-y-5 font-sans leading-normal min-h-[600px] overflow-x-auto print-area">
+                    <div 
+                      className="p-6 sm:p-8 rounded-b-xl shadow-2xl border border-slate-300 space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all"
+                      style={{
+                        backgroundColor: activeStyle.theme.bgColor,
+                        color: activeStyle.theme.textColor,
+                        fontFamily: activeStyle.theme.fontFamily === 'serif' ? 'Georgia, serif' : activeStyle.theme.fontFamily === 'mono' ? 'Courier New, monospace' : activeStyle.theme.fontFamily === 'outfit' ? 'Outfit, sans-serif' : 'Inter, sans-serif'
+                      }}
+                    >
                     {/* Header */}
-                    <div className="border-b-2 border-slate-900 pb-3 text-center">
-                      <h1 className="text-2xl font-bold tracking-tight uppercase text-slate-900">{parsedProfile.name}</h1>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5">{activeResume?.targetRole || parsedProfile.title}</p>
-                      <p className="text-[11px] text-slate-600 mt-0.5">
+                    <div 
+                      className="border-b-2 pb-4 text-center transition-all rounded-t-lg p-3"
+                      style={{
+                        borderColor: activeStyle.theme.dividerColor,
+                        backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
+                      }}
+                    >
+                      <h1 
+                        className="text-2xl font-bold tracking-tight uppercase"
+                        style={{ color: activeStyle.theme.primaryColor }}
+                      >
+                        {parsedProfile.name}
+                      </h1>
+                      <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.secondaryColor }}>
+                        {activeResume?.targetRole || parsedProfile.title}
+                      </p>
+                      <p className="text-[11px] opacity-80 mt-0.5" style={{ color: activeStyle.theme.textColor }}>
                         {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
                       </p>
                     </div>
@@ -1666,11 +1801,14 @@ export default function App() {
 
                       return (
                         <div className="space-y-1.5">
-                          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-0.5">
+                          <h2 
+                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
+                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                          >
                             About Me
                           </h2>
                           {totalAboutItems.map(exp => (
-                            <p key={exp.id} className="text-[11px] text-slate-800 leading-relaxed">
+                            <p key={exp.id} className="text-[11px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
                               {formatBulletText(exp.bullets?.[0] || '')}
                             </p>
                           ))}
@@ -1688,10 +1826,13 @@ export default function App() {
 
                       return (
                         <div className="space-y-1.5">
-                          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-0.5">
+                          <h2 
+                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
+                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                          >
                             Technical Skills & Core Competencies
                           </h2>
-                          <p className="text-[11px] text-slate-800 leading-relaxed font-mono">
+                          <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
                             {activeSkills.join(' • ')}
                           </p>
                         </div>
@@ -1710,16 +1851,24 @@ export default function App() {
 
                       return (
                         <div key={sec} className="space-y-2">
-                          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-0.5 capitalize">
+                          <h2 
+                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize"
+                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                          >
                             {sec}
                           </h2>
                           {totalItems.map(exp => (
                             <div key={exp.id} className="space-y-0.5">
                               <div className="flex justify-between items-baseline text-[11px]">
-                                <span className="font-bold text-slate-900">{exp.title}</span>
-                                <span className="font-semibold text-slate-700">{exp.company} | {exp.period}</span>
+                                <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
+                                <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{exp.company} {exp.period ? `| ${exp.period}` : ''}</span>
                               </div>
-                              <ul className="list-disc list-inside text-[11px] text-slate-800 space-y-0.5">
+                              {exp.skills && exp.skills.length > 0 && (
+                                <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                  Skills: {exp.skills.join(', ')}
+                                </div>
+                              )}
+                              <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
                                 {exp.bullets?.map((b, i) => (
                                   <li key={i}>{formatBulletText(b)}</li>
                                 ))}
@@ -2717,6 +2866,169 @@ export default function App() {
               >
                 Close Report
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* AI Resume Style Creator Modal */}
+      {isAiStyleModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-indigo-500/50 w-full max-w-4xl rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in max-h-[92vh] flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Palette className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-base sm:text-lg font-bold text-white">Create Custom AI Resume Style</h3>
+                <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded-full font-mono">
+                  ✨ Gemini AI Powered
+                </span>
+              </div>
+              <button
+                onClick={() => setIsAiStyleModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200 text-xs font-mono p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 overflow-y-auto pr-1">
+              {/* Left Side: Live Style Document Tile Preview Box */}
+              <div className="lg:col-span-5 bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center justify-center space-y-3">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider self-start">
+                  Style Document Tile Preview
+                </span>
+
+                <div
+                  className="w-48 h-64 rounded-xl p-4 flex flex-col justify-between border-2 shadow-2xl transition-all relative overflow-hidden"
+                  style={{
+                    backgroundColor: (previewAiStyle || activeStyle).theme.bgColor,
+                    borderColor: (previewAiStyle || activeStyle).theme.primaryColor
+                  }}
+                >
+                  {/* Header Mini */}
+                  <div className="space-y-2">
+                    <div
+                      className="p-2 rounded text-center"
+                      style={{
+                        backgroundColor: (previewAiStyle || activeStyle).theme.headerBgColor || (previewAiStyle || activeStyle).theme.primaryColor,
+                        color: (previewAiStyle || activeStyle).theme.headerBgColor ? (previewAiStyle || activeStyle).theme.textColor : '#ffffff'
+                      }}
+                    >
+                      <div className="text-[10px] font-bold truncate" style={{ color: (previewAiStyle || activeStyle).theme.headerBgColor ? (previewAiStyle || activeStyle).theme.textColor : '#ffffff' }}>
+                        {parsedProfile.name || 'Candidate Name'}
+                      </div>
+                      <div className="text-[7px] opacity-80 truncate">
+                        {parsedProfile.title || 'Target Role Title'}
+                      </div>
+                    </div>
+
+                    {/* Skeleton Lines with accent color */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="h-1 w-full rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.dividerColor }} />
+                      <div className="h-1.5 w-1/2 rounded font-bold" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.primaryColor }} />
+                      <div className="h-1 w-5/6 rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
+                      <div className="h-1 w-4/5 rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
+                      <div className="h-1.5 w-2/3 rounded font-bold" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.secondaryColor }} />
+                      <div className="h-1 w-full rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
+                    </div>
+                  </div>
+
+                  {/* Bottom Badge */}
+                  <div className="pt-2 border-t text-center text-[9px] font-bold" style={{ borderColor: (previewAiStyle || activeStyle).theme.dividerColor, color: (previewAiStyle || activeStyle).theme.textColor }}>
+                    {(previewAiStyle || activeStyle).name}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 text-center italic max-w-xs">
+                  {previewAiStyle ? `Generated: ${previewAiStyle.description}` : 'Enter your design instructions on the right to generate a custom theme.'}
+                </p>
+              </div>
+
+              {/* Right Side: Prompt Text Area & AI Actions */}
+              <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-200 mb-1">
+                      AI Design Instruction & Aesthetic Prompt:
+                    </label>
+                    <textarea
+                      value={aiStylePromptInput}
+                      onChange={(e) => setAiStylePromptInput(e.target.value)}
+                      placeholder="Describe your ideal resume aesthetic... (e.g., 'Minimalist Swiss design with teal headers, serif body font, and thin slate dividers', 'Sleek dark mode theme with neon purple accents', 'Classic Harvard finance resume with burgundy left border')"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-36 resize-none font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Quick Inspiration Badges */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-medium text-slate-400">Quick Prompt Inspiration:</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        'Minimalist Swiss with teal accent lines',
+                        'Sleek dark mode tech theme with purple glow',
+                        'Classic Harvard finance with navy left border',
+                        'Modern Scandinavian with warm coral headers'
+                      ].map(prompt => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => setAiStylePromptInput(prompt)}
+                          className="text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-indigo-300 px-2.5 py-1 rounded-lg transition"
+                        >
+                          + {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 border-t border-slate-800 pt-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!aiStylePromptInput.trim()) return;
+                      setIsGeneratingAiStyle(true);
+                      try {
+                        const newStyle = await generateResumeStyleWithGemini(aiStylePromptInput);
+                        setPreviewAiStyle(newStyle);
+                      } catch (e) {
+                        console.error('Generate AI Style Error:', e);
+                      } finally {
+                        setIsGeneratingAiStyle(false);
+                      }
+                    }}
+                    disabled={!aiStylePromptInput.trim() || isGeneratingAiStyle}
+                    className="flex-1 flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs py-2.5 rounded-lg shadow-lg transition disabled:opacity-40"
+                  >
+                    {isGeneratingAiStyle ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <span>Gemini Designing Style...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-purple-200" />
+                        <span>Generate AI Resume Style</span>
+                      </>
+                    )}
+                  </button>
+
+                  {previewAiStyle && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResumeStyles(prev => [previewAiStyle, ...prev]);
+                        setActiveStyleId(previewAiStyle.id);
+                        setIsAiStyleModalOpen(false);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-lg transition whitespace-nowrap"
+                    >
+                      Save & Select Style ✓
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

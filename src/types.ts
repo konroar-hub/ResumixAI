@@ -70,4 +70,26 @@ export interface JobRecord {
   atsAnalysisDetails?: AtsAnalysisDetails;
 }
 
+export interface ResumeStyleTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  textColor: string;
+  bgColor: string;
+  headerBgColor?: string;
+  accentColor: string;
+  fontFamily: 'inter' | 'roboto' | 'serif' | 'mono' | 'outfit';
+  layout: 'single-column' | 'sidebar-left' | 'modern-grid';
+  borderStyle: 'solid' | 'dashed' | 'none' | 'double';
+  dividerColor: string;
+  sectionHeaderStyle: 'clean-underline' | 'filled-badge' | 'uppercase-accent' | 'minimal-left-border';
+}
+
+export interface ResumeStyle {
+  id: string;
+  name: string;
+  description: string;
+  isAiGenerated?: boolean;
+  theme: ResumeStyleTheme;
+}
+
 

@@ -12,7 +12,7 @@ import {
   User
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-import { MasterProfile, ResumeItem, JobRecord } from './types';
+import { MasterProfile, ResumeItem, JobRecord, ResumeStyle } from './types';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
@@ -44,6 +44,7 @@ export interface UserStoreData {
   profile?: MasterProfile;
   resumes?: ResumeItem[];
   jobsList?: JobRecord[];
+  resumeStyles?: ResumeStyle[];
 }
 
 export async function saveUserDataToFirestore(userId: string, data: UserStoreData): Promise<void> {

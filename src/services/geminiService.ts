@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { MasterProfile, CardCategory } from '../types';
+import { MasterProfile, CardCategory, ResumeStyle } from '../types';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
@@ -320,6 +320,106 @@ ${candidateContextText ? candidateContextText.slice(0, 3000) : 'Full stack softw
       missingKeywords: [],
       strengths: ['Versatile engineering skill set.'],
       gaps: []
+    };
+  }
+}
+
+/**
+ * 5. AI Resume Template & Design Style Generator (gemini-flash-latest)
+ */
+export async function generateResumeStyleWithGemini(userDesignPrompt: string): Promise<ResumeStyle> {
+  if (!ai || !userDesignPrompt.trim()) {
+    return {
+      id: `style-${Date.now()}`,
+      name: 'Custom AI Modern Style',
+      description: userDesignPrompt || 'AI-generated custom resume theme',
+      isAiGenerated: true,
+      theme: {
+        primaryColor: '#6366f1',
+        secondaryColor: '#06b6d4',
+        textColor: '#0f172a',
+        bgColor: '#ffffff',
+        accentColor: '#818cf8',
+        fontFamily: 'outfit',
+        layout: 'single-column',
+        borderStyle: 'solid',
+        dividerColor: '#e2e8f0',
+        sectionHeaderStyle: 'uppercase-accent'
+      }
+    };
+  }
+
+  try {
+    const prompt = `You are an expert UI/UX designer specializing in modern resume typography, color harmonies, and document design.
+Generate a complete, beautiful resume design style based on this user prompt: "${userDesignPrompt}"
+
+Return JSON ONLY matching this exact structure:
+{
+  "name": "Catchy Style Name",
+  "description": "Short description of design aesthetic",
+  "theme": {
+    "primaryColor": "#HEX",
+    "secondaryColor": "#HEX",
+    "textColor": "#HEX",
+    "bgColor": "#HEX",
+    "headerBgColor": "#HEX or leave empty string if white/transparent",
+    "accentColor": "#HEX",
+    "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit",
+    "layout": "single-column" | "sidebar-left" | "modern-grid",
+    "borderStyle": "solid" | "dashed" | "none" | "double",
+    "dividerColor": "#HEX",
+    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border"
+  }
+}`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'inter';
+    const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'uppercase-accent';
+
+    return {
+      id: `style-ai-${Date.now()}`,
+      name: parsed.name || 'AI Custom Resume Style',
+      description: parsed.description || userDesignPrompt,
+      isAiGenerated: true,
+      theme: {
+        primaryColor: parsed.theme?.primaryColor || '#4f46e5',
+        secondaryColor: parsed.theme?.secondaryColor || '#0284c7',
+        textColor: parsed.theme?.textColor || '#0f172a',
+        bgColor: parsed.theme?.bgColor || '#ffffff',
+        headerBgColor: parsed.theme?.headerBgColor || undefined,
+        accentColor: parsed.theme?.accentColor || '#6366f1',
+        fontFamily: validFont,
+        layout: 'single-column',
+        borderStyle: 'solid',
+        dividerColor: parsed.theme?.dividerColor || '#e2e8f0',
+        sectionHeaderStyle: validHeaderStyle
+      }
+    };
+  } catch (error) {
+    console.error('Gemini Resume Style Generation error:', error);
+    return {
+      id: `style-ai-${Date.now()}`,
+      name: 'Custom AI Theme',
+      description: userDesignPrompt,
+      isAiGenerated: true,
+      theme: {
+        primaryColor: '#4f46e5',
+        secondaryColor: '#0284c7',
+        textColor: '#0f172a',
+        bgColor: '#ffffff',
+        accentColor: '#6366f1',
+        fontFamily: 'inter',
+        layout: 'single-column',
+        borderStyle: 'solid',
+        dividerColor: '#e2e8f0',
+        sectionHeaderStyle: 'uppercase-accent'
+      }
     };
   }
 }
