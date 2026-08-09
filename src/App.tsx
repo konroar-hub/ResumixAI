@@ -30,7 +30,8 @@ import {
   Globe,
   User as UserIcon,
   LogOut,
-  Zap
+  Zap,
+  GitFork
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
 import {
@@ -623,12 +624,14 @@ export default function App() {
       }
     } else if (editingCard.target === 'wizard') {
       const isExistingWizardCard = wizardCustomTailoredCards.some(c => c.id === editingCard.card.id);
+      const isAlreadyAiTailored = Boolean(editingCard.card.isAiTailored);
+
       if (isExistingWizardCard) {
         setWizardCustomTailoredCards(prev => prev.map(c => {
           if (c.id !== editingCard.card.id) return c;
           return {
             ...cardPayload,
-            isDeviatedFromMaster: true
+            isDeviatedFromMaster: !isAlreadyAiTailored
           };
         }));
       } else {
@@ -637,7 +640,7 @@ export default function App() {
         const newVariantCard: ExperienceItem = {
           ...cardPayload,
           id: customCardId,
-          isDeviatedFromMaster: true,
+          isDeviatedFromMaster: !isAlreadyAiTailored,
           tailoredForRole: newResumeRole || 'Target Role'
         };
 
@@ -1373,23 +1376,26 @@ export default function App() {
 
                                     return combinedCategoryCards.map((exp) => {
                                       const isSelected = wizardSelectedExpIds.has(exp.id);
+                                      const isDeviatedNotAi = exp.isDeviatedFromMaster && !exp.isAiTailored;
                                       return (
                                         <div
                                           key={exp.id}
                                           onClick={() => toggleWizardCardSelection(exp.id)}
                                           className={`cursor-pointer p-3.5 rounded-xl border transition-all ${
                                             isSelected
-                                              ? 'bg-slate-950 border-indigo-500 shadow-md'
+                                              ? isDeviatedNotAi
+                                                ? 'bg-slate-950 border-amber-500/80 shadow-md ring-1 ring-amber-500/40'
+                                                : 'bg-slate-950 border-indigo-500 shadow-md'
                                               : 'bg-slate-950/40 border-slate-800 opacity-60 hover:opacity-90'
                                           }`}
                                         >
                                           <div className="flex items-start justify-between">
                                             <div className="flex items-center space-x-3">
-                                              <div className={`p-1.5 rounded-md transition ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                              <div className={`p-1.5 rounded-md transition ${isSelected ? (isDeviatedNotAi ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-800 text-slate-500'}`}>
                                                 <CheckCircle2 className="w-4 h-4" />
                                               </div>
                                               <div>
-                                                <div className="flex items-center space-x-2 flex-wrap">
+                                                <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                                                   <h4 className="font-bold text-sm text-slate-100">{exp.title}</h4>
                                                   {exp.isAiTailored && (
                                                     <span className="inline-flex items-center space-x-1 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
@@ -1397,12 +1403,30 @@ export default function App() {
                                                       <span>AI Tailored for {exp.tailoredForRole || 'Job Posting'}</span>
                                                     </span>
                                                   )}
+                                                  {isDeviatedNotAi && (
+                                                    <span className="inline-flex items-center space-x-1 bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                                                      <GitFork className="w-3 h-3 text-amber-400 shrink-0" />
+                                                      <span>Variant Override (Edited to fit position)</span>
+                                                    </span>
+                                                  )}
                                                 </div>
                                                 <span className="text-xs text-indigo-400 font-medium">
-                                                  {exp.company} • {exp.period}
+                                                  {exp.company} {exp.period ? `• ${exp.period}` : ''}
                                                 </span>
                                               </div>
                                             </div>
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openCardEditor('wizard', exp);
+                                              }}
+                                              className="flex items-center space-x-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-lg transition font-semibold shrink-0"
+                                              title="Edit Card for this Resume Variant"
+                                            >
+                                              <Edit3 className="w-3 h-3 text-indigo-400" />
+                                              <span>Edit</span>
+                                            </button>
                                           </div>
 
                                           {exp.skills && exp.skills.length > 0 && (
