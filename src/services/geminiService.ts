@@ -7,10 +7,16 @@ export const isGeminiConfigured = Boolean(apiKey && apiKey.length > 5);
 
 const ai = isGeminiConfigured ? new GoogleGenAI({ apiKey }) : null;
 
+export interface TailoredCardOverride {
+  id: string;
+  tailoredBullets: string[];
+}
+
 export interface GeminiTailorResponse {
   selectedCardIds: string[];
   suggestedSkills: string[];
   tailoringNotes: string;
+  tailoredCardOverrides?: TailoredCardOverride[];
 }
 
 export interface GeminiJobAnalysis {
@@ -21,8 +27,9 @@ export interface GeminiJobAnalysis {
 }
 
 /**
- * 1. AI Job Posting Tailoring (gemini-2.5-flash)
- * Matches master experience cards to target job posting text using succinct JSON prompting.
+ * 1. AI Job Posting Tailoring & Card Rewriting (gemini-2.5-flash)
+ * Matches master experience cards to target job posting text, extracts skills, and rewrites bullets
+ * strictly aligned to job description keywords without inventing facts.
  */
 export async function tailorResumeWithGemini(
   masterProfile: MasterProfile,
@@ -46,21 +53,39 @@ export async function tailorResumeWithGemini(
   }
 
   try {
-    // Minimal, token-efficient payload
     const compactCards = (masterProfile.experiences || []).map(e => ({
       id: e.id,
-      cat: e.category || 'experience',
+      category: e.category || 'experience',
       title: e.title,
-      co: e.company,
-      skills: e.skills
+      company: e.company,
+      skills: e.skills || [],
+      bullets: (e.bullets || []).map(b => (typeof b === 'string' ? b : b?.text || ''))
     }));
 
-    const prompt = `Act as an ATS Resume Strategy Engine.
-Given Candidate Cards & Job Posting, return JSON only:
-{"selectedCardIds":["id1"],"suggestedSkills":["skill1"],"tailoringNotes":"rationale"}
+    const prompt = `Act as an expert ATS Resume Optimization Engine.
+Analyze Candidate Cards against the Target Job Posting.
 
-CARDS: ${JSON.stringify(compactCards)}
-JOB POSTING: ${jobPostingText.slice(0, 3000)}`;
+Tasks:
+1. Identify relevant card IDs for the target role.
+2. Extract key technical skills from the job posting.
+3. For each relevant card, rewrite its bullet points to naturally incorporate target job keywords.
+STRICT CONSTRAINT: Base rewrites ONLY on true existing facts in the original bullets. DO NOT FABRICATE, INVENT, OR MAKE UP FALSE EXPERIENCES, COMPANIES, METRICS, OR CLAIMS.
+
+Return JSON only matching this schema:
+{
+  "selectedCardIds": ["card-id-1"],
+  "suggestedSkills": ["Skill 1", "Skill 2"],
+  "tailoringNotes": "Brief 1-2 sentence strategy rationale",
+  "tailoredCardOverrides": [
+    { "id": "card-id-1", "tailoredBullets": ["Enhanced bullet 1", "Enhanced bullet 2"] }
+  ]
+}
+
+CARDS:
+${JSON.stringify(compactCards, null, 2)}
+
+TARGET JOB POSTING:
+${jobPostingText.slice(0, 4000)}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -76,7 +101,8 @@ JOB POSTING: ${jobPostingText.slice(0, 3000)}`;
     return {
       selectedCardIds: Array.isArray(parsed.selectedCardIds) ? parsed.selectedCardIds : [],
       suggestedSkills: Array.isArray(parsed.suggestedSkills) ? parsed.suggestedSkills : [],
-      tailoringNotes: parsed.tailoringNotes || 'Tailored with Gemini 2.5 Flash.'
+      tailoringNotes: parsed.tailoringNotes || 'Tailored with Gemini 2.5 Flash.',
+      tailoredCardOverrides: Array.isArray(parsed.tailoredCardOverrides) ? parsed.tailoredCardOverrides : []
     };
   } catch (error) {
     console.error('Gemini tailoring error:', error);
@@ -90,7 +116,6 @@ JOB POSTING: ${jobPostingText.slice(0, 3000)}`;
 
 /**
  * 2. AI Resume Text-to-YAML Converter (gemini-2.5-flash)
- * Parses raw text or unformatted resume into valid Resumix AI YAML schema using succinct prompting.
  */
 export async function convertResumeTextToYamlWithGemini(resumeText: string): Promise<string> {
   if (!ai || !resumeText.trim()) {
@@ -133,13 +158,12 @@ ${resumeText.slice(0, 5000)}`;
 
 /**
  * 3. AI Bullet Achievement Enhancer (gemini-2.5-flash)
- * Rewrites raw draft bullets into strong, action-verb metric-driven ATS bullet points.
  */
 export async function enhanceBulletWithGemini(rawBulletText: string, contextTitle: string): Promise<string> {
   if (!ai || !rawBulletText.trim()) return rawBulletText;
 
   try {
-    const prompt = `Rewrite this resume bullet point into 1 concise, high-impact ATS achievement statement with strong action verbs and quantified impact metrics. Return statement only without quotes:
+    const prompt = `Rewrite this resume bullet point into 1 concise, high-impact ATS achievement statement with strong action verbs and quantified impact metrics. Base rewrites strictly on true facts without inventing false details. Return statement only without quotes:
 CONTEXT: ${contextTitle}
 BULLET: ${rawBulletText}`;
 
@@ -157,7 +181,6 @@ BULLET: ${rawBulletText}`;
 
 /**
  * 4. AI Job Posting Analyzer & ATS Match Scoring (gemini-2.5-flash)
- * Analyzes target job text in Job Tracker for job title, company, and ATS match score.
  */
 export async function analyzeJobMatchWithGemini(jobPostingText: string): Promise<GeminiJobAnalysis> {
   if (!ai || !jobPostingText.trim()) {

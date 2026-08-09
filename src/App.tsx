@@ -286,12 +286,40 @@ export default function App() {
     setIsLlmGenerating(true);
     try {
       const res = await tailorResumeWithGemini(parsedProfile, stage1JobPostingText);
+
+      // Pre-select recommended card IDs
       if (res.selectedCardIds.length > 0) {
         setWizardSelectedExpIds(new Set(res.selectedCardIds));
       }
+
+      // Pre-select suggested skills
       if (res.suggestedSkills.length > 0) {
         setWizardExtraSkills(new Set(res.suggestedSkills));
       }
+
+      // Apply tailored card bullet overrides if provided
+      if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
+        setParsedProfile(prev => {
+          if (!prev?.experiences) return prev;
+          const updatedExp = prev.experiences.map(exp => {
+            const override = res.tailoredCardOverrides?.find(o => o.id === exp.id);
+            if (override && override.tailoredBullets && override.tailoredBullets.length > 0) {
+              return { ...exp, bullets: override.tailoredBullets };
+            }
+            return exp;
+          });
+          return { ...prev, experiences: updatedExp };
+        });
+      }
+
+      // Default resume title if blank
+      if (!newResumeTitle.trim()) {
+        setNewResumeTitle(stage1CompanyName ? `${stage1CompanyName} Resume` : 'Tailored Resume Variant');
+      }
+
+      // Automatically transition to Stage 2 (Card Selection)
+      setCreateResumeStage(2);
+      setWizardCategoryIndex(0);
     } catch (e) {
       console.error('AI Tailor Error:', e);
     } finally {
@@ -965,33 +993,31 @@ export default function App() {
                               />
                             </div>
                             <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="block text-[11px] font-medium text-slate-400">Job Description Requirements</label>
-                                <button
-                                  type="button"
-                                  onClick={handleAiTailorJobPost}
-                                  disabled={!stage1JobPostingText.trim() || isLlmGenerating}
-                                  className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-[11px] font-semibold px-3 py-1 rounded shadow transition"
-                                >
-                                  {isLlmGenerating ? (
-                                    <>
-                                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                      <span>Matching...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Wand2 className="w-3 h-3" />
-                                      <span>AI Tailor</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
+                              <label className="block text-[11px] font-medium text-slate-400 mb-1">Job Description Requirements</label>
                               <textarea
                                 value={stage1JobPostingText}
                                 onChange={(e) => setStage1JobPostingText(e.target.value)}
-                                placeholder="Paste job posting text here and click AI Tailor to auto-match matching experience cards..."
-                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                                placeholder="Paste job posting text here and click AI Tailor to auto-match and rewrite matching cards..."
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 h-28 resize-none"
                               />
+                              <button
+                                type="button"
+                                onClick={handleAiTailorJobPost}
+                                disabled={!stage1JobPostingText.trim() || isLlmGenerating}
+                                className="mt-2.5 w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-40 text-white text-xs font-bold py-2.5 rounded-lg shadow-lg transition"
+                              >
+                                {isLlmGenerating ? (
+                                  <>
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                    <span>Analyzing & Rewriting Cards with Gemini 2.5 Flash...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 className="w-4 h-4 text-purple-300" />
+                                    <span>Run AI Tailor & Proceed to Card Selection →</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
                         )}
