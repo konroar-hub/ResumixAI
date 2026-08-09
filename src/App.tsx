@@ -248,6 +248,7 @@ export default function App() {
   const [pasteYamlError, setPasteYamlError] = useState('');
   const [copiedPromptSuccess, setCopiedPromptSuccess] = useState(false);
   const [enhancingBulletIndex, setEnhancingBulletIndex] = useState<number | null>(null);
+  const [wizardCustomTailoredCards, setWizardCustomTailoredCards] = useState<ExperienceItem[]>([]);
 
   const handleAiEnhanceBullet = async (index: number) => {
     const rawText = cardFormBulletList[index]?.text;
@@ -286,38 +287,40 @@ export default function App() {
     setIsLlmGenerating(true);
     try {
       const res = await tailorResumeWithGemini(parsedProfile, stage1JobPostingText);
+      const targetRoleName = stage1CompanyName ? `${stage1CompanyName} Role` : (newResumeRole || 'Target Role');
+      const generatedCustomCards: ExperienceItem[] = [];
 
-      // Pre-select recommended card IDs
-      if (res.selectedCardIds.length > 0) {
-        setWizardSelectedExpIds(new Set(res.selectedCardIds));
+      if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
+        res.tailoredCardOverrides.forEach(override => {
+          const origCard = (parsedProfile?.experiences || []).find(e => e.id === override.id);
+          if (origCard && override.tailoredBullets && override.tailoredBullets.length > 0) {
+            generatedCustomCards.push({
+              ...origCard,
+              id: `ai-tailored-${origCard.id}-${Date.now()}`,
+              bullets: override.tailoredBullets,
+              isAiTailored: true,
+              tailoredForRole: targetRoleName
+            });
+          }
+        });
       }
 
-      // Pre-select suggested skills
+      // Store variant-specific AI tailored cards without altering Master Repository
+      setWizardCustomTailoredCards(generatedCustomCards);
+
+      const aiCardIds = generatedCustomCards.map(c => c.id);
+      const masterIdsToSelect = (res.selectedCardIds || []).filter(id => !generatedCustomCards.some(ac => ac.id.includes(id)));
+
+      setWizardSelectedExpIds(new Set([...aiCardIds, ...masterIdsToSelect]));
+
       if (res.suggestedSkills.length > 0) {
         setWizardExtraSkills(new Set(res.suggestedSkills));
       }
 
-      // Apply tailored card bullet overrides if provided
-      if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
-        setParsedProfile(prev => {
-          if (!prev?.experiences) return prev;
-          const updatedExp = prev.experiences.map(exp => {
-            const override = res.tailoredCardOverrides?.find(o => o.id === exp.id);
-            if (override && override.tailoredBullets && override.tailoredBullets.length > 0) {
-              return { ...exp, bullets: override.tailoredBullets };
-            }
-            return exp;
-          });
-          return { ...prev, experiences: updatedExp };
-        });
-      }
-
-      // Default resume title if blank
       if (!newResumeTitle.trim()) {
         setNewResumeTitle(stage1CompanyName ? `${stage1CompanyName} Resume` : 'Tailored Resume Variant');
       }
 
-      // Automatically transition to Stage 2 (Card Selection)
       setCreateResumeStage(2);
       setWizardCategoryIndex(0);
     } catch (e) {
@@ -564,6 +567,7 @@ export default function App() {
     setWizardCategoryIndex(0);
     setWizardSelectedExpIds(new Set());
     setWizardExtraSkills(new Set());
+    setWizardCustomTailoredCards([]);
     setCustomWizardSkillInput('');
     setIsCreatingResume(true);
   };
@@ -652,8 +656,9 @@ export default function App() {
       title: newResumeTitle,
       targetRole: newResumeRole || stage1CompanyName || 'Role',
       updatedAt: new Date().toISOString().split('T')[0],
-      selectedExpIds: Array.from(wizardSelectedExpIds),
-      selectedSkills: finalSkillsList
+      selectedExpIds: Array.from(wizardSelectedExpIds).filter(id => !id.startsWith('ai-tailored-')),
+      selectedSkills: finalSkillsList,
+      customExperiences: wizardCustomTailoredCards.filter(c => wizardSelectedExpIds.has(c.id))
     };
 
     setResumes(prev => [newRes, ...prev]);
@@ -1180,63 +1185,77 @@ export default function App() {
                                 </button>
                               </div>
                             ) : (
-                              <>
-                                {currentCategoryCards.map((exp) => {
-                                  const isSelected = wizardSelectedExpIds.has(exp.id);
-                                  return (
-                                    <div
-                                      key={exp.id}
-                                      onClick={() => toggleWizardCardSelection(exp.id)}
-                                      className={`cursor-pointer p-3.5 rounded-xl border transition-all ${
-                                        isSelected
-                                          ? 'bg-slate-950 border-indigo-500 shadow-md'
-                                          : 'bg-slate-950/40 border-slate-800 opacity-60 hover:opacity-90'
-                                      }`}
+                                <div className="space-y-2.5">
+                                  {(() => {
+                                    const masterCards = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === currentCategory);
+                                    const aiCards = wizardCustomTailoredCards.filter(c => (c.category || 'experience') === currentCategory);
+                                    const combinedCategoryCards = [...aiCards, ...masterCards];
+
+                                    return combinedCategoryCards.map((exp) => {
+                                      const isSelected = wizardSelectedExpIds.has(exp.id);
+                                      return (
+                                        <div
+                                          key={exp.id}
+                                          onClick={() => toggleWizardCardSelection(exp.id)}
+                                          className={`cursor-pointer p-3.5 rounded-xl border transition-all ${
+                                            isSelected
+                                              ? 'bg-slate-950 border-indigo-500 shadow-md'
+                                              : 'bg-slate-950/40 border-slate-800 opacity-60 hover:opacity-90'
+                                          }`}
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex items-center space-x-3">
+                                              <div className={`p-1.5 rounded-md transition ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                                <CheckCircle2 className="w-4 h-4" />
+                                              </div>
+                                              <div>
+                                                <div className="flex items-center space-x-2 flex-wrap">
+                                                  <h4 className="font-bold text-sm text-slate-100">{exp.title}</h4>
+                                                  {exp.isAiTailored && (
+                                                    <span className="inline-flex items-center space-x-1 bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                                                      <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
+                                                      <span>AI Tailored for {exp.tailoredForRole || 'Job Posting'}</span>
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <span className="text-xs text-indigo-400 font-medium">
+                                                  {exp.company} • {exp.period}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {exp.skills && exp.skills.length > 0 && (
+                                            <div className="mt-2 flex flex-wrap gap-1">
+                                              {exp.skills.map((s, i) => (
+                                                <span key={i} className="text-[10px] bg-slate-900 text-indigo-300 px-2 py-0.5 rounded border border-slate-800">
+                                                  {s}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+
+                                          <ul className="mt-2.5 space-y-1 text-xs text-slate-300 list-disc list-inside">
+                                            {exp.bullets?.map((b, i) => (
+                                              <li key={i}>{formatBulletText(b)}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+
+                                  <div className="pt-2 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => openCardEditor('master', undefined, undefined, currentCategory)}
+                                      className="inline-flex items-center space-x-1.5 bg-slate-850 hover:bg-slate-800 text-indigo-300 border border-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition shadow"
                                     >
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex items-center space-x-3">
-                                          <div className={`p-1.5 rounded-md transition ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                          </div>
-                                          <div>
-                                            <h4 className="font-bold text-sm text-slate-100">{exp.title}</h4>
-                                            <span className="text-xs text-indigo-400 font-medium">
-                                              {exp.company} • {exp.period}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {exp.skills && exp.skills.length > 0 && (
-                                        <div className="mt-2 flex flex-wrap gap-1">
-                                          {exp.skills.map((s, i) => (
-                                            <span key={i} className="text-[10px] bg-slate-900 text-indigo-300 px-2 py-0.5 rounded border border-slate-800">
-                                              {s}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-
-                                      <ul className="mt-2.5 space-y-1 text-xs text-slate-300 list-disc list-inside">
-                                        {exp.bullets?.map((b, i) => (
-                                          <li key={i}>{formatBulletText(b)}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  );
-                                })}
-
-                                <div className="pt-2 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => openCardEditor('master', undefined, undefined, currentCategory)}
-                                    className="inline-flex items-center space-x-1.5 bg-slate-850 hover:bg-slate-800 text-indigo-300 border border-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition shadow"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Add Another {currentCategory} Entry</span>
-                                  </button>
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Add Another {currentCategory} Entry</span>
+                                    </button>
+                                  </div>
                                 </div>
-                              </>
                             )}
                           </div>
                         )}

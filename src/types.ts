@@ -15,6 +15,8 @@ export interface ExperienceItem {
   skills: string[];
   bullets: (string | BulletItem)[];
   selected?: boolean;
+  isAiTailored?: boolean;
+  tailoredForRole?: string;
 }
 
 export interface ResumeItem {
