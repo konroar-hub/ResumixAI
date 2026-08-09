@@ -1,11 +1,14 @@
 import { GoogleGenAI } from '@google/genai';
-import { MasterProfile, CardCategory, ExperienceItem } from '../types';
+import { MasterProfile, CardCategory } from '../types';
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 export const isGeminiConfigured = Boolean(apiKey && apiKey.length > 5);
 
 const ai = isGeminiConfigured ? new GoogleGenAI({ apiKey }) : null;
+
+// Primary model string for Google AI API
+const MODEL_NAME = 'gemini-flash-latest';
 
 export interface TailoredCardOverride {
   id: string;
@@ -34,48 +37,7 @@ export interface GeminiJobAnalysis {
 }
 
 /**
- * Local fallback tailor if Gemini API key is unavailable
- */
-function fallbackLocalTailor(
-  masterProfile: MasterProfile,
-  jobPostingText: string
-): GeminiTailorResponse {
-  const jobLower = jobPostingText.toLowerCase();
-  const matchedCards = (masterProfile.experiences || []).filter(exp => {
-    const text = `${exp.title} ${exp.company} ${(exp.skills || []).join(' ')} ${(exp.bullets || []).join(' ')}`.toLowerCase();
-    return jobLower.split(/\s+/).some(word => word.length > 3 && text.includes(word));
-  });
-
-  const matchedIds = matchedCards.map(e => e.id);
-  const selectedCardIds = matchedIds.length > 0 ? matchedIds : (masterProfile.experiences || []).slice(0, 3).map(e => e.id);
-
-  const tailoredCardOverrides: TailoredCardOverride[] = (masterProfile.experiences || [])
-    .filter(e => selectedCardIds.includes(e.id) && ((e.category || 'experience') === 'experience' || (e.category || 'experience') === 'project'))
-    .map(e => ({
-      id: e.id,
-      category: e.category || 'experience',
-      tailoredBullets: (e.bullets || []).map(b => {
-        const text = typeof b === 'string' ? b : b.text;
-        return `${text} (Optimized for targeted job role specifications)`;
-      })
-    }));
-
-  const hasAbout = (masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about');
-
-  return {
-    selectedCardIds,
-    suggestedSkills: ['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Gemini AI'],
-    tailoringNotes: 'Keyword matching applied.',
-    tailoredCardOverrides,
-    generatedAboutCard: !hasAbout ? {
-      title: 'Professional Bio & Summary',
-      paragraph: 'Driven engineer with hands-on experience designing, developing, and deploying high-performance applications tailored to enterprise specifications.'
-    } : undefined
-  };
-}
-
-/**
- * 1. AI Job Posting Tailoring & Card Rewriting (gemini-2.5-flash)
+ * 1. AI Job Posting Tailoring & Card Rewriting (gemini-flash-latest)
  * Matches master experience & project cards to target job posting text, extracts skills, rewrites bullets
  * strictly aligned to job description keywords without inventing facts, and auto-generates About card paragraph if missing.
  */
@@ -84,7 +46,24 @@ export async function tailorResumeWithGemini(
   jobPostingText: string
 ): Promise<GeminiTailorResponse> {
   if (!ai || !jobPostingText.trim()) {
-    return fallbackLocalTailor(masterProfile, jobPostingText);
+    // Basic fallback if Gemini API is unconfigured
+    const jobLower = jobPostingText.toLowerCase();
+    const matchedCards = (masterProfile.experiences || []).filter(exp => {
+      const text = `${exp.title} ${exp.company} ${(exp.skills || []).join(' ')} ${(exp.bullets || []).join(' ')}`.toLowerCase();
+      return jobLower.split(/\s+/).some(word => word.length > 3 && text.includes(word));
+    });
+    const selectedCardIds = matchedCards.length > 0 ? matchedCards.map(e => e.id) : (masterProfile.experiences || []).slice(0, 3).map(e => e.id);
+
+    return {
+      selectedCardIds,
+      suggestedSkills: ['React', 'TypeScript', 'Tailwind CSS', 'Vite', 'Gemini AI'],
+      tailoringNotes: 'Keyword matching applied.',
+      tailoredCardOverrides: [],
+      generatedAboutCard: !(masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about') ? {
+        title: 'Professional Bio & Summary',
+        paragraph: 'Driven engineer with hands-on experience building high-performance web applications tailored to enterprise specifications.'
+      } : undefined
+    };
   }
 
   try {
@@ -97,170 +76,98 @@ export async function tailorResumeWithGemini(
       bullets: (e.bullets || []).map(b => (typeof b === 'string' ? b : b?.text || ''))
     }));
 
-    // Step 1: Recommend Relevant Card IDs & Extract Skills
-    const selectionPrompt = `You are an expert ATS Resume Strategy Engine.
-Select ONLY the most relevant card IDs for this job posting from the candidate's master cards. Include relevant experience cards and project cards. Also extract target technical skills.
+    const hasAboutCard = (masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about');
 
-Return JSON ONLY:
+    const prompt = `Act as an expert ATS Resume Strategy Engine.
+Analyze the candidate's master cards against the target job posting.
+
+RULES FOR TAILORING:
+1. Select ONLY the most relevant card IDs (experience, project, education, about) for the target job posting.
+2. For EVERY selected 'experience' and 'project' card, rewrite its bullet points to naturally incorporate target job keywords.
+   STRICT RULE: Base bullet rewrites STRICTLY on true existing facts in the original bullets. DO NOT FABRICATE OR MAKE UP FALSE CLAIMS OR METRICS.
+3. DO NOT TAILOR EDUCATION CARDS.
+${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Generate a 2-sentence About Bio summary paragraph (NOT bullet points) tailored for this target role." : "4. If an 'about' card exists, rewrite its paragraph text to fit the target role."}
+
+Return JSON ONLY (no markdown backticks):
 {
-  "selectedCardIds": ["card-id-1", "card-id-2"],
+  "selectedCardIds": ["exp-1", "proj-1"],
   "suggestedSkills": ["Skill 1", "Skill 2"],
-  "tailoringNotes": "Brief 1-sentence rationale for card selection"
+  "tailoringNotes": "Brief rationale for card selection",
+  "tailoredCardOverrides": [
+    {
+      "id": "exp-1",
+      "category": "experience",
+      "tailoredBullets": [
+        "Architected scalable web applications using React and TypeScript, optimizing response times by 35%.",
+        "Engineered robust frontend features aligned to high-concurrency target system specifications."
+      ]
+    },
+    {
+      "id": "proj-1",
+      "category": "project",
+      "tailoredBullets": [
+        "Developed full-stack web applications integrating REST APIs and state management.",
+        "Built responsive UI components following modern design systems."
+      ]
+    }
+  ],
+  ${!hasAboutCard ? '"generatedAboutCard": { "title": "Professional Bio & Summary", "paragraph": "Senior Engineer specializing in scalable web systems and modern frontend architectures. Proven track record delivering high-impact features matching enterprise requirements." }' : '"generatedAboutCard": null'}
 }
 
 CANDIDATE CARDS:
 ${JSON.stringify(compactCards, null, 2)}
 
 TARGET JOB POSTING:
-${jobPostingText.slice(0, 3000)}`;
+${jobPostingText.slice(0, 4000)}`;
 
-    const selResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: selectionPrompt,
-      config: { responseMimeType: 'application/json' }
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
     });
 
-    const selText = (selResponse.text || '').replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-    let selParsed: any = {};
+    const text = response.text || '';
+    const cleanJson = text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    let parsed: any = {};
     try {
-      selParsed = JSON.parse(selText);
+      parsed = JSON.parse(cleanJson);
     } catch (e) {
-      const match = selText.match(/\{[\s\S]*\}/);
+      console.warn('Gemini JSON parse fallback:', e);
+      const match = text.match(/\{[\s\S]*\}/);
       if (match) {
-        try { selParsed = JSON.parse(match[0]); } catch (err) {}
-      }
-    }
-
-    let selectedCardIds: string[] = Array.isArray(selParsed.selectedCardIds) ? selParsed.selectedCardIds : [];
-    const suggestedSkills: string[] = Array.isArray(selParsed.suggestedSkills) ? selParsed.suggestedSkills : [];
-    const tailoringNotes: string = selParsed.tailoringNotes || 'Tailored with Gemini AI.';
-
-    // Fallback if selection array is empty
-    if (selectedCardIds.length === 0) {
-      selectedCardIds = (masterProfile.experiences || []).slice(0, 3).map(e => e.id);
-    }
-
-    // Step 2: Specifically Rewrite Bullets for EACH Selected Experience AND Project Card
-    const cardsToTailor = (masterProfile.experiences || []).filter(e => 
-      selectedCardIds.includes(e.id) && ((e.category || 'experience') === 'experience' || (e.category || 'experience') === 'project')
-    );
-
-    const tailoredCardOverrides: TailoredCardOverride[] = [];
-
-    for (const card of cardsToTailor) {
-      const origBullets = (card.bullets || []).map(b => (typeof b === 'string' ? b : b?.text || ''));
-      const cardCat = card.category || 'experience';
-
-      const rewritePrompt = `Rewrite the bullet points for this ${cardCat} card to incorporate ATS keywords from the target job posting.
-
-CARD TITLE: ${card.title}
-COMPANY/ORGANIZATION: ${card.company}
-ORIGINAL BULLETS:
-${JSON.stringify(origBullets, null, 2)}
-
-TARGET JOB POSTING:
-${jobPostingText.slice(0, 2000)}
-
-STRICT CONSTRAINTS:
-1. Base bullet rewrites STRICTLY on true existing facts in the original bullets. DO NOT INVENT, FABRICATE, OR MAKE UP FALSE EXPERIENCES OR CLAIMS.
-2. Naturally integrate job posting keywords and impact action verbs.
-3. Return JSON ONLY:
-{
-  "tailoredBullets": [
-    "Rewritten high-impact bullet 1...",
-    "Rewritten high-impact bullet 2..."
-  ]
-}`;
-
-      try {
-        const rwResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: rewritePrompt,
-          config: { responseMimeType: 'application/json' }
-        });
-        const rwText = (rwResponse.text || '').replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-        let rwParsed: any = {};
         try {
-          rwParsed = JSON.parse(rwText);
-        } catch (e) {
-          const match = rwText.match(/\{[\s\S]*\}/);
-          if (match) {
-            try { rwParsed = JSON.parse(match[0]); } catch (err) {}
-          }
-        }
-
-        if (Array.isArray(rwParsed.tailoredBullets) && rwParsed.tailoredBullets.length > 0) {
-          tailoredCardOverrides.push({
-            id: card.id,
-            category: cardCat,
-            tailoredBullets: rwParsed.tailoredBullets
-          });
-        }
-      } catch (err) {
-        console.error(`Gemini bullet rewrite failed for card ${card.id}:`, err);
-      }
-    }
-
-    // Step 3: Auto-Generate About Card Paragraph if Missing
-    let generatedAboutCard: GeneratedAboutCard | undefined = undefined;
-    const hasAboutCard = (masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about');
-
-    if (!hasAboutCard) {
-      const aboutPrompt = `Generate a single cohesive 2-sentence About Bio summary paragraph for a candidate applying to this job posting.
-
-CANDIDATE TITLE: ${masterProfile.title || 'Professional'}
-JOB POSTING:
-${jobPostingText.slice(0, 2000)}
-
-Return JSON ONLY:
-{
-  "title": "Professional Bio & Summary",
-  "paragraph": "Cohesive 2-sentence About Bio summary paragraph aligned to target job role specifications."
-}`;
-
-      try {
-        const abResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: aboutPrompt,
-          config: { responseMimeType: 'application/json' }
-        });
-        const abText = (abResponse.text || '').replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-        let abParsed: any = {};
-        try {
-          abParsed = JSON.parse(abText);
-        } catch (e) {
-          const match = abText.match(/\{[\s\S]*\}/);
-          if (match) {
-            try { abParsed = JSON.parse(match[0]); } catch (err) {}
-          }
-        }
-
-        if (abParsed.paragraph) {
-          generatedAboutCard = {
-            title: abParsed.title || 'Professional Bio & Summary',
-            paragraph: abParsed.paragraph
-          };
-        }
-      } catch (err) {
-        console.error('Gemini About card generation failed:', err);
+          parsed = JSON.parse(match[0]);
+        } catch (err) {}
       }
     }
 
     return {
-      selectedCardIds,
-      suggestedSkills,
-      tailoringNotes,
-      tailoredCardOverrides,
-      generatedAboutCard
+      selectedCardIds: Array.isArray(parsed.selectedCardIds) ? parsed.selectedCardIds : [],
+      suggestedSkills: Array.isArray(parsed.suggestedSkills) ? parsed.suggestedSkills : [],
+      tailoringNotes: parsed.tailoringNotes || 'Tailored with Gemini AI.',
+      tailoredCardOverrides: Array.isArray(parsed.tailoredCardOverrides) ? parsed.tailoredCardOverrides : [],
+      generatedAboutCard: parsed.generatedAboutCard || undefined
     };
   } catch (error) {
-    console.error('Gemini tailoring pipeline error:', error);
-    return fallbackLocalTailor(masterProfile, jobPostingText);
+    console.error('Gemini tailoring error:', error);
+    const matched = (masterProfile.experiences || []).slice(0, 3).map(e => e.id);
+    return {
+      selectedCardIds: matched,
+      suggestedSkills: [],
+      tailoringNotes: 'Fallback card selection applied.'
+    };
   }
 }
 
 /**
- * 2. AI Resume Text-to-YAML Converter (gemini-2.5-flash)
+ * 2. AI Resume Text-to-YAML Converter (gemini-flash-latest)
  */
 export async function convertResumeTextToYamlWithGemini(resumeText: string): Promise<string> {
   if (!ai || !resumeText.trim()) {
@@ -294,7 +201,7 @@ RESUME:
 ${resumeText.slice(0, 5000)}`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: MODEL_NAME,
     contents: prompt
   });
 
@@ -302,7 +209,7 @@ ${resumeText.slice(0, 5000)}`;
 }
 
 /**
- * 3. AI Bullet Achievement Enhancer (gemini-2.5-flash)
+ * 3. AI Bullet Achievement Enhancer (gemini-flash-latest)
  */
 export async function enhanceBulletWithGemini(rawBulletText: string, contextTitle: string): Promise<string> {
   if (!ai || !rawBulletText.trim()) return rawBulletText;
@@ -313,7 +220,7 @@ CONTEXT: ${contextTitle}
 TEXT: ${rawBulletText}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: MODEL_NAME,
       contents: prompt
     });
 
@@ -325,7 +232,7 @@ TEXT: ${rawBulletText}`;
 }
 
 /**
- * 4. AI Job Posting Analyzer & ATS Match Scoring (gemini-2.5-flash)
+ * 4. AI Job Posting Analyzer & ATS Match Scoring (gemini-flash-latest)
  */
 export async function analyzeJobMatchWithGemini(jobPostingText: string): Promise<GeminiJobAnalysis> {
   if (!ai || !jobPostingText.trim()) {
@@ -344,7 +251,7 @@ export async function analyzeJobMatchWithGemini(jobPostingText: string): Promise
 TEXT: ${jobPostingText.slice(0, 3000)}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: MODEL_NAME,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
