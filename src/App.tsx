@@ -209,6 +209,40 @@ export default function App() {
     }
   }, [jobsList, currentUser]);
   const [jobDescription, setJobDescription] = useState('');
+  const [viewingJobDescription, setViewingJobDescription] = useState<JobRecord | null>(null);
+  const [analyzingJobId, setAnalyzingJobId] = useState<string | null>(null);
+
+  const runAtsJobMatchAnalysis = async (job: JobRecord) => {
+    if (!job.description) {
+      alert("No job description text stored for this job entry. Paste job description text to run ATS analysis.");
+      return;
+    }
+    setAnalyzingJobId(job.id);
+    try {
+      const linkedResume = resumes.find(r => r.id === job.resumeId);
+      let candidateContext = '';
+      if (linkedResume) {
+        candidateContext = `Target Role: ${linkedResume.targetRole}\nSkills: ${linkedResume.selectedSkills?.join(', ')}`;
+      } else {
+        candidateContext = `Name: ${parsedProfile.name}\nTitle: ${parsedProfile.title}\nExperiences: ${parsedProfile.experiences?.map(e => e.title + ' ' + e.company).join(', ')}`;
+      }
+
+      const analysis = await analyzeJobMatchWithGemini(job.description, candidateContext);
+      setJobsList(prev => prev.map(j => {
+        if (j.id !== job.id) return j;
+        return {
+          ...j,
+          title: j.title === 'Tailored Target Role' || j.title === 'Target Role' || !j.title ? analysis.roleTitle : j.title,
+          company: j.company === 'Target Enterprise' || j.company === 'Target Company' || !j.company ? analysis.companyName : j.company,
+          matchScore: analysis.matchScore
+        };
+      }));
+    } catch (e) {
+      console.error('ATS Match Analysis Error:', e);
+    } finally {
+      setAnalyzingJobId(null);
+    }
+  };
 
   // 2-Stage Create Resume Variant Wizard State
   const [isCreatingResume, setIsCreatingResume] = useState(false);
@@ -1977,6 +2011,7 @@ export default function App() {
                           company: analysis.companyName,
                           dateAdded: new Date().toISOString().split('T')[0],
                           status: 'Applied',
+                          description: jobDescription.trim(),
                           matchScore: analysis.matchScore
                         };
                         setJobsList(prev => [newRecord, ...prev]);
@@ -2007,12 +2042,13 @@ export default function App() {
 
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
                 <div className="overflow-x-auto w-full">
-                  <table className="w-full text-left text-xs min-w-[700px]">
+                  <table className="w-full text-left text-xs min-w-[750px]">
                     <thead className="bg-slate-850 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                       <tr>
-                        <th className="p-4">Role</th>
+                        <th className="p-4">Target Role</th>
                         <th className="p-4">Company</th>
                         <th className="p-4">Resume Used</th>
+                        <th className="p-4">Description</th>
                         <th className="p-4">Date Added</th>
                         <th className="p-4">Status</th>
                         <th className="p-4">ATS Match Score</th>
@@ -2022,43 +2058,103 @@ export default function App() {
                     <tbody className="divide-y divide-slate-800 text-slate-200">
                       {jobsList.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="p-8 text-center text-slate-500 italic">
+                          <td colSpan={8} className="p-8 text-center text-slate-500 italic">
                             No job tracker entries found. Use the Tailor & Track box above to add job postings.
                           </td>
                         </tr>
                       ) : (
                         jobsList.map((job) => {
-                          const linkedResTitle = job.resumeTitle || resumes.find(r => r.id === job.resumeId)?.title;
+                          const linkedRes = resumes.find(r => r.id === job.resumeId);
+                          const linkedResTitle = job.resumeTitle || linkedRes?.title;
                           return (
                             <tr key={job.id} className="hover:bg-slate-850/50 transition">
                               <td className="p-4 font-semibold text-slate-100">{job.title}</td>
                               <td className="p-4 text-slate-300">{job.company}</td>
                               <td className="p-4">
-                                {linkedResTitle ? (
-                                  <span className="text-indigo-400 font-medium flex items-center space-x-1.5">
+                                {linkedResTitle && job.resumeId ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveResumeId(job.resumeId!);
+                                      setActiveTab('resumes');
+                                    }}
+                                    className="text-indigo-400 hover:text-indigo-300 font-semibold text-xs flex items-center space-x-1.5 hover:underline"
+                                    title="Open Resume Variant in Manager"
+                                  >
                                     <FolderKanban className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                     <span>{linkedResTitle}</span>
-                                  </span>
+                                  </button>
                                 ) : (
                                   <span className="text-slate-500 italic">None Linked</span>
                                 )}
                               </td>
+                              <td className="p-4">
+                                {job.description ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewingJobDescription(job)}
+                                    className="p-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-indigo-400 hover:text-indigo-300 rounded-lg transition"
+                                    title="View Full Job Description"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-500 italic text-[11px]">No Text</span>
+                                )}
+                              </td>
                               <td className="p-4 text-slate-400">{job.dateAdded}</td>
                               <td className="p-4">
-                                <span className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-indigo-950 text-indigo-300 border border-indigo-800">
-                                  {job.status}
-                                </span>
+                                <select
+                                  value={job.status}
+                                  onChange={(e) => {
+                                    const newStatus = e.target.value as JobRecord['status'];
+                                    setJobsList(prev => prev.map(j => j.id === job.id ? { ...j, status: newStatus } : j));
+                                  }}
+                                  className="bg-slate-950 border border-slate-800 text-indigo-300 font-semibold text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                                >
+                                  <option value="Draft">Draft</option>
+                                  <option value="Applied">Applied</option>
+                                  <option value="Interviewing">Interviewing</option>
+                                  <option value="Offer">Offer</option>
+                                  <option value="Rejected">Rejected</option>
+                                </select>
                               </td>
                               <td className="p-4">
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-24 bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div
-                                      className="bg-emerald-500 h-full rounded-full"
-                                      style={{ width: `${job.matchScore}%` }}
-                                    />
+                                {analyzingJobId === job.id ? (
+                                  <div className="flex items-center space-x-2 text-xs text-indigo-400 font-mono">
+                                    <span className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin"></span>
+                                    <span>Analyzing...</span>
                                   </div>
-                                  <span className="font-mono text-emerald-400">{job.matchScore}%</span>
-                                </div>
+                                ) : typeof job.matchScore === 'number' ? (
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full ${
+                                          job.matchScore >= 80 ? 'bg-emerald-500' : job.matchScore >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${job.matchScore}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-mono text-emerald-400 font-bold">{job.matchScore}%</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => runAtsJobMatchAnalysis(job)}
+                                      className="text-slate-500 hover:text-indigo-400 text-xs p-1 ml-1"
+                                      title="Re-analyze ATS Match Score"
+                                    >
+                                      <Wand2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => runAtsJobMatchAnalysis(job)}
+                                    className="flex items-center space-x-1.5 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                                    <span>Analyze ATS Match</span>
+                                  </button>
+                                )}
                               </td>
                               <td className="p-4 text-right">
                                 <button
@@ -2373,6 +2469,46 @@ export default function App() {
                   Import & Replace All
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* View Job Description Modal */}
+      {viewingJobDescription && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-xl shadow-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                  <Briefcase className="w-5 h-5 text-indigo-400" />
+                  <span>{viewingJobDescription.title}</span>
+                </h3>
+                <p className="text-xs text-indigo-300 font-medium">
+                  {viewingJobDescription.company} • Added {viewingJobDescription.dateAdded}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingJobDescription(null)}
+                className="text-slate-400 hover:text-slate-200 text-xs font-mono"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Job Description & Requirements:</h4>
+              <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                {viewingJobDescription.description || 'No description text provided for this job.'}
+              </p>
+            </div>
+
+            <div className="flex justify-end border-t border-slate-800 pt-3">
+              <button
+                onClick={() => setViewingJobDescription(null)}
+                className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

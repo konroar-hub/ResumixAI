@@ -234,21 +234,31 @@ TEXT: ${rawBulletText}`;
 /**
  * 4. AI Job Posting Analyzer & ATS Match Scoring (gemini-flash-latest)
  */
-export async function analyzeJobMatchWithGemini(jobPostingText: string): Promise<GeminiJobAnalysis> {
+export async function analyzeJobMatchWithGemini(
+  jobPostingText: string,
+  candidateContextText?: string
+): Promise<GeminiJobAnalysis> {
   if (!ai || !jobPostingText.trim()) {
     return {
       roleTitle: 'Tailored Target Role',
       companyName: 'Target Enterprise',
-      matchScore: 92,
+      matchScore: 85,
       extractedSkills: ['React', 'TypeScript', 'Node.js']
     };
   }
 
   try {
-    const prompt = `Analyze this job posting text. Return JSON only:
-{"roleTitle":"Title","companyName":"Company","matchScore":88,"extractedSkills":["Skill1","Skill2"]}
+    const prompt = `You are an expert ATS recruiter. Analyze this job posting text against the candidate's resume/skills profile.
+Evaluate keyword match, skills alignment, and relevant experience to calculate a realistic ATS match score percentage from 0 to 100.
 
-TEXT: ${jobPostingText.slice(0, 3000)}`;
+Return JSON ONLY with exact structure:
+{"roleTitle":"Title","companyName":"Company","matchScore":85,"extractedSkills":["Skill1","Skill2"]}
+
+JOB POSTING TEXT:
+${jobPostingText.slice(0, 3000)}
+
+CANDIDATE RESUME / PROFILE:
+${candidateContextText ? candidateContextText.slice(0, 3000) : 'Full stack software engineer with React, TypeScript, Node.js, Python, Cloud experience.'}`;
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
@@ -262,7 +272,7 @@ TEXT: ${jobPostingText.slice(0, 3000)}`;
     return {
       roleTitle: parsed.roleTitle || 'Tailored Target Role',
       companyName: parsed.companyName || 'Target Enterprise',
-      matchScore: typeof parsed.matchScore === 'number' ? Math.min(100, Math.max(50, parsed.matchScore)) : 90,
+      matchScore: typeof parsed.matchScore === 'number' ? Math.min(100, Math.max(10, Math.round(parsed.matchScore))) : 85,
       extractedSkills: Array.isArray(parsed.extractedSkills) ? parsed.extractedSkills : []
     };
   } catch (error) {
@@ -270,7 +280,7 @@ TEXT: ${jobPostingText.slice(0, 3000)}`;
     return {
       roleTitle: 'Tailored Target Role',
       companyName: 'Target Enterprise',
-      matchScore: 88,
+      matchScore: 82,
       extractedSkills: []
     };
   }

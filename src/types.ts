@@ -55,7 +55,8 @@ export interface JobRecord {
   title: string;
   dateAdded: string;
   status: 'Draft' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
-  matchScore: number;
+  matchScore?: number;
+  description?: string;
   resumeId?: string;
   resumeTitle?: string;
 }
