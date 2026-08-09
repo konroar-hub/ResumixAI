@@ -32,7 +32,12 @@ import {
   LogOut
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
-import { tailorResumeWithGemini } from './services/geminiService';
+import {
+  tailorResumeWithGemini,
+  convertResumeTextToYamlWithGemini,
+  enhanceBulletWithGemini,
+  analyzeJobMatchWithGemini
+} from './services/geminiService';
 import {
   auth,
   onAuthStateChanged,
@@ -237,11 +242,44 @@ export default function App() {
   const [cardFormSkills, setCardFormSkills] = useState('');
   const [cardFormBulletList, setCardFormBulletList] = useState<{ id: string; text: string }[]>([{ id: `b-${Date.now()}-0`, text: '' }]);
 
-  // Paste YAML Modal State
+  // Paste YAML & AI Enhancer Loading States
   const [isPasteYamlOpen, setIsPasteYamlOpen] = useState(false);
   const [pasteYamlInput, setPasteYamlInput] = useState('');
   const [pasteYamlError, setPasteYamlError] = useState('');
   const [copiedPromptSuccess, setCopiedPromptSuccess] = useState(false);
+  const [enhancingBulletIndex, setEnhancingBulletIndex] = useState<number | null>(null);
+
+  const handleAiEnhanceBullet = async (index: number) => {
+    const rawText = cardFormBulletList[index]?.text;
+    if (!rawText || !rawText.trim()) return;
+    setEnhancingBulletIndex(index);
+    try {
+      const enhanced = await enhanceBulletWithGemini(rawText, cardFormTitle || cardFormCategory);
+      setCardFormBulletList(prev => {
+        const updated = [...prev];
+        updated[index] = { ...updated[index], text: enhanced };
+        return updated;
+      });
+    } catch (e) {
+      console.error('AI Bullet Enhancer error:', e);
+    } finally {
+      setEnhancingBulletIndex(null);
+    }
+  };
+
+  const handleAiConvertTextToYaml = async () => {
+    if (!pasteYamlInput.trim()) return;
+    setIsLlmGenerating(true);
+    setPasteYamlError('');
+    try {
+      const yamlResult = await convertResumeTextToYamlWithGemini(pasteYamlInput);
+      setPasteYamlInput(yamlResult);
+    } catch (e: any) {
+      setPasteYamlError(e?.message || 'Failed to convert resume text to YAML.');
+    } finally {
+      setIsLlmGenerating(false);
+    }
+  };
 
   const handleAiTailorJobPost = async () => {
     if (!stage1JobPostingText.trim()) return;
@@ -1714,23 +1752,41 @@ export default function App() {
                     className="w-full sm:flex-1 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 h-20 resize-none"
                   />
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!jobDescription.trim()) return;
-                      const newRecord: JobRecord = {
-                        id: `job-${Date.now()}`,
-                        title: 'Tailored Senior Role',
-                        company: 'Target Corp',
-                        dateAdded: new Date().toISOString().split('T')[0],
-                        status: 'Applied',
-                        matchScore: 94
-                      };
-                      setJobsList(prev => [newRecord, ...prev]);
-                      setJobDescription('');
+                      setIsLlmGenerating(true);
+                      try {
+                        const analysis = await analyzeJobMatchWithGemini(jobDescription);
+                        const newRecord: JobRecord = {
+                          id: `job-${Date.now()}`,
+                          title: analysis.roleTitle,
+                          company: analysis.companyName,
+                          dateAdded: new Date().toISOString().split('T')[0],
+                          status: 'Applied',
+                          matchScore: analysis.matchScore
+                        };
+                        setJobsList(prev => [newRecord, ...prev]);
+                        setJobDescription('');
+                      } catch (e) {
+                        console.error('AI Job Matcher error:', e);
+                      } finally {
+                        setIsLlmGenerating(false);
+                      }
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 rounded-lg flex items-center justify-center space-x-2 self-stretch sm:self-end py-3 transition shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
+                    disabled={!jobDescription.trim() || isLlmGenerating}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold text-xs px-4 rounded-lg flex items-center justify-center space-x-2 self-stretch sm:self-end py-3 transition shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Tailor & Track</span>
+                    {isLlmGenerating ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>AI Tailor & Track</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1944,6 +2000,20 @@ export default function App() {
                         placeholder="Enter bullet achievement text..."
                         className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleAiEnhanceBullet(idx)}
+                        disabled={!item.text.trim() || enhancingBulletIndex === idx}
+                        className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2 py-1 rounded transition disabled:opacity-40"
+                        title="Enhance Bullet with Gemini AI"
+                      >
+                        {enhancingBulletIndex === idx ? (
+                          <span className="w-3 h-3 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
+                        ) : (
+                          <Wand2 className="w-3 h-3 text-indigo-400" />
+                        )}
+                        <span className="hidden sm:inline">AI Enhance</span>
+                      </button>
                       {cardFormBulletList.length > 1 && (
                         <button
                           type="button"
@@ -2037,25 +2107,42 @@ export default function App() {
               </div>
             )}
 
-            <div className="flex justify-between items-center border-t border-slate-800 pt-3">
+            <div className="flex flex-col sm:flex-row gap-2 justify-between items-center border-t border-slate-800 pt-3">
               <button
                 onClick={() => setIsPasteYamlOpen(false)}
-                className="px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg transition"
+                className="w-full sm:w-auto px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg transition"
               >
                 Cancel
               </button>
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleAiConvertTextToYaml}
+                  disabled={!pasteYamlInput.trim() || isLlmGenerating}
+                  className="flex items-center justify-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow disabled:opacity-40 whitespace-nowrap"
+                >
+                  {isLlmGenerating ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>Gemini Converting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-3.5 h-3.5 text-purple-300" />
+                      <span>AI Convert Text to YAML</span>
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={() => handleImportYaml('merge')}
-                  className="px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 font-semibold rounded-lg transition"
+                  className="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow transition whitespace-nowrap"
                 >
                   Import & Merge
                 </button>
                 <button
                   onClick={() => handleImportYaml('replace')}
-                  className="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow transition"
+                  className="px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-lg transition whitespace-nowrap"
                 >
-                  Import & Replace
+                  Import & Replace All
                 </button>
               </div>
             </div>
