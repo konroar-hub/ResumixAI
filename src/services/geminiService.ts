@@ -383,7 +383,7 @@ Your output MUST be JSON ONLY matching this exact structure:
 
     const parsed = JSON.parse(response.text || '{}');
     const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'outfit';
-    const validLayout = ['single-column', 'two-column-sidebar', 'header-banner', 'cards-modern'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'header-banner';
+    const validLayout = ['single-column', 'sidebar-left', 'sidebar-right', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'sidebar-left';
     const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'pill-badge';
 
     return {
@@ -400,6 +400,7 @@ Your output MUST be JSON ONLY matching this exact structure:
         headerTextColor: parsed.theme?.headerTextColor || undefined,
         sidebarBgColor: parsed.theme?.sidebarBgColor || undefined,
         cardBgColor: parsed.theme?.cardBgColor || undefined,
+        stripeColor: parsed.theme?.stripeColor || parsed.theme?.primaryColor || '#4f46e5',
         accentColor: parsed.theme?.accentColor || '#6366f1',
         fontFamily: validFont,
         layout: validLayout,

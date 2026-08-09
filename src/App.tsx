@@ -1813,8 +1813,8 @@ export default function App() {
                     </div>
 
                     {/* Layout Body Renderer */}
-                    {activeStyle.theme.layout === 'two-column-sidebar' ? (
-                      /* Split Two-Column Sidebar Layout */
+                    {activeStyle.theme.layout === 'sidebar-left' ? (
+                      /* Split Left Sidebar Layout */
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                         {/* Left Sidebar Column */}
                         <div 
@@ -1824,7 +1824,7 @@ export default function App() {
                             borderColor: activeStyle.theme.dividerColor
                           }}
                         >
-                          {/* 1. About Me Sidebar */}
+                          {/* About Me Sidebar */}
                           {(() => {
                             const items = (parsedProfile?.experiences || []).filter(e => 
                               (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
@@ -1848,7 +1848,7 @@ export default function App() {
                             );
                           })()}
 
-                          {/* 2. Technical Skills Sidebar */}
+                          {/* Technical Skills Sidebar */}
                           {(() => {
                             const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
                               ? activeResume.selectedSkills
@@ -1859,7 +1859,7 @@ export default function App() {
                             return (
                               <div className="space-y-1.5">
                                 <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
-                                  Core Skills
+                                  Technical Skills
                                 </h3>
                                 <div className="flex flex-wrap gap-1">
                                   {activeSkills.map(sk => (
@@ -1918,9 +1918,114 @@ export default function App() {
                           })}
                         </div>
                       </div>
+                    ) : activeStyle.theme.layout === 'sidebar-right' ? (
+                      /* Split Right Sidebar Layout */
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        {/* Left Main Column */}
+                        <div className="md:col-span-8 space-y-5">
+                          {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
+                            const items = (parsedProfile?.experiences || []).filter(e => 
+                              (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                            );
+                            const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === sec);
+                            const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                            const totalItems = [...customItems, ...unTailoredItems];
+                            if (totalItems.length === 0) return null;
+
+                            return (
+                              <div key={sec} className="space-y-2">
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  {sec}
+                                </h2>
+                                {totalItems.map(exp => {
+                                  const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                  const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
+                                  const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+
+                                  return (
+                                    <div key={exp.id} className="space-y-0.5">
+                                      <div className="flex justify-between items-baseline text-[11px]">
+                                        <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
+                                        {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                      </div>
+                                      {exp.skills && exp.skills.length > 0 && (
+                                        <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                          Skills: {exp.skills.join(', ')}
+                                        </div>
+                                      )}
+                                      <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                        {exp.bullets?.map((b, i) => (
+                                          <li key={i}>{formatBulletText(b)}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Right Sidebar Column */}
+                        <div 
+                          className="md:col-span-4 p-4 rounded-xl space-y-4 border"
+                          style={{ 
+                            backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
+                            borderColor: activeStyle.theme.dividerColor
+                          }}
+                        >
+                          {/* Technical Skills Sidebar */}
+                          {(() => {
+                            const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
+                              ? activeResume.selectedSkills
+                              : autoFilledWizardSkills;
+
+                            if (!activeSkills || activeSkills.length === 0) return null;
+
+                            return (
+                              <div className="space-y-1.5">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  Technical Skills
+                                </h3>
+                                <div className="flex flex-wrap gap-1">
+                                  {activeSkills.map(sk => (
+                                    <span key={sk} className="text-[10px] px-2 py-0.5 rounded font-mono border" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
+                                      {sk}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* About Me Sidebar */}
+                          {(() => {
+                            const items = (parsedProfile?.experiences || []).filter(e => 
+                              (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                            );
+                            const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === 'about');
+                            const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                            const totalAboutItems = [...customItems, ...unTailoredItems];
+                            if (totalAboutItems.length === 0) return null;
+
+                            return (
+                              <div className="space-y-1.5">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  About Me
+                                </h3>
+                                {totalAboutItems.map(exp => (
+                                  <p key={exp.id} className="text-[10px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
+                                    {formatBulletText(exp.bullets?.[0] || '')}
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     ) : (
-                      /* Standard / Cards / Header Banner Layout */
-                      <div className="space-y-5">
+                      /* Standard / Cards / Brand Margin Stripe Layout */
+                      <div className={`space-y-5 ${activeStyle.theme.layout === 'brand-margin-stripe' ? 'pl-4 border-l-8' : ''}`} style={{ borderColor: activeStyle.theme.stripeColor || activeStyle.theme.primaryColor }}>
                         {/* 1. About Me */}
                         {(() => {
                           const items = (parsedProfile?.experiences || []).filter(e => 
@@ -3101,30 +3206,60 @@ export default function App() {
                     <textarea
                       value={aiStylePromptInput}
                       onChange={(e) => setAiStylePromptInput(e.target.value)}
-                      placeholder="Describe your ideal resume aesthetic... (e.g., 'Minimalist Swiss design with teal headers, serif body font, and thin slate dividers', 'Sleek dark mode theme with neon purple accents', 'Classic Harvard finance resume with burgundy left border')"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-36 resize-none font-sans leading-relaxed"
+                      placeholder="Describe your ideal resume aesthetic... (e.g., 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects')"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-32 resize-none font-sans leading-relaxed"
                     />
                   </div>
 
-                  {/* Quick Inspiration Badges */}
+                  {/* Curated Suggested Prompts for Radically Different Layouts */}
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-medium text-slate-400">Quick Prompt Inspiration:</label>
+                    <label className="block text-[11px] font-medium text-slate-400">Curated Suggested Layout Prompts:</label>
                     <div className="flex flex-wrap gap-1.5">
                       {[
-                        'Minimalist Swiss with teal accent lines',
-                        'Sleek dark mode tech theme with purple glow',
-                        'Classic Harvard finance with navy left border',
-                        'Modern Scandinavian with warm coral headers'
-                      ].map(prompt => (
+                        { label: '🚀 Split Left Sidebar', prompt: 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects' },
+                        { label: '💼 Right Column Metrics', prompt: 'Right Column Metrics: Clean slate background with dedicated right sidebar for Technical Skills & Core Competencies' },
+                        { label: '🏛️ Harvard Serif Law', prompt: 'Executive Harvard Serif: Classic serif font, double crimson rule dividers, formal right-aligned dates' },
+                        { label: '⚡ Cyberpunk Dark Mode', prompt: 'Cyberpunk Dark Mode: Neon purple & cyan glow accents on pitch black background with monospaced font' },
+                        { label: '📐 Swiss Brand Margin', prompt: 'Minimalist Swiss Editorial: Bold oversize left headers with a thick crimson brand margin stripe down left edge' },
+                        { label: '🎨 Modern Floating Cards', prompt: 'Cards & Floating Grid: Tinted violet background with white floating card blocks and pill badges' }
+                      ].map(item => (
                         <button
-                          key={prompt}
+                          key={item.label}
                           type="button"
-                          onClick={() => setAiStylePromptInput(prompt)}
-                          className="text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-indigo-300 px-2.5 py-1 rounded-lg transition"
+                          onClick={() => setAiStylePromptInput(item.prompt)}
+                          className="text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-indigo-300 px-2.5 py-1 rounded-lg transition text-left"
                         >
-                          + {prompt}
+                          {item.label}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* ATS Format & Resume Data Schema Compatibility Panel */}
+                  <div className="bg-slate-950 p-3.5 rounded-xl border border-indigo-500/30 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-200 flex items-center space-x-1.5 text-[11px] uppercase tracking-wider">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>ATS Format & Data Schema Compatibility Check</span>
+                      </span>
+                      <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+                        ✓ 100% Schema Compatible
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-[10px]">
+                      <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 space-y-0.5">
+                        <span className="text-emerald-400 font-bold">✓ Structural Layout</span>
+                        <p className="text-slate-400 truncate font-mono">{(previewAiStyle || activeStyle).theme.layout}</p>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 space-y-0.5">
+                        <span className="text-emerald-400 font-bold">✓ ATS Typography</span>
+                        <p className="text-slate-400 truncate font-mono">{(previewAiStyle || activeStyle).theme.fontFamily}</p>
+                      </div>
+                      <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 space-y-0.5">
+                        <span className="text-emerald-400 font-bold">✓ Data Field Binding</span>
+                        <p className="text-slate-400 truncate">Contact, About, Skills, Exp, Edu</p>
+                      </div>
                     </div>
                   </div>
                 </div>

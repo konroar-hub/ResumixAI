@@ -33,8 +33,45 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
     }
   },
   {
+    id: 'style-sidebar-left',
+    name: 'Left Sidebar Tech',
+    description: 'Distinctive dark left sidebar column for Skills & About Me',
+    theme: {
+      primaryColor: '#0d9488',
+      secondaryColor: '#14b8a6',
+      textColor: '#1e293b',
+      bgColor: '#ffffff',
+      sidebarBgColor: '#0f172a',
+      headerTextColor: '#ffffff',
+      accentColor: '#2dd4bf',
+      fontFamily: 'space-grotesk',
+      layout: 'sidebar-left',
+      borderStyle: 'solid',
+      dividerColor: '#e2e8f0',
+      sectionHeaderStyle: 'uppercase-accent'
+    }
+  },
+  {
+    id: 'style-sidebar-right',
+    name: 'Right Column Metrics',
+    description: 'Right sidebar layout placing Technical Skills and About on the right',
+    theme: {
+      primaryColor: '#0369a1',
+      secondaryColor: '#0284c7',
+      textColor: '#0f172a',
+      bgColor: '#f8fafc',
+      sidebarBgColor: '#f1f5f9',
+      accentColor: '#38bdf8',
+      fontFamily: 'outfit',
+      layout: 'sidebar-right',
+      borderStyle: 'solid',
+      dividerColor: '#cbd5e1',
+      sectionHeaderStyle: 'filled-badge'
+    }
+  },
+  {
     id: 'style-header-banner',
-    name: 'Modern Header Banner',
+    name: 'Modern Header Hero',
     description: 'Full-width rich header banner with contrasting typography & pill badges',
     theme: {
       primaryColor: '#0369a1',
@@ -52,26 +89,8 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
     }
   },
   {
-    id: 'style-sidebar',
-    name: 'Split Two-Column Sidebar',
-    description: 'Dual column layout with dedicated left sidebar for contact & skills',
-    theme: {
-      primaryColor: '#0d9488',
-      secondaryColor: '#14b8a6',
-      textColor: '#1e293b',
-      bgColor: '#ffffff',
-      sidebarBgColor: '#f0fdf4',
-      accentColor: '#0f766e',
-      fontFamily: 'space-grotesk',
-      layout: 'two-column-sidebar',
-      borderStyle: 'solid',
-      dividerColor: '#bbf7d0',
-      sectionHeaderStyle: 'uppercase-accent'
-    }
-  },
-  {
     id: 'style-cards-modern',
-    name: 'Cards & Floating Blocks',
+    name: 'Cards & Grid Blocks',
     description: 'Contemporary card blocks with subtle tinting and minimal left borders',
     theme: {
       primaryColor: '#6d28d9',
@@ -88,22 +107,21 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
     }
   },
   {
-    id: 'style-dark-cyber',
-    name: 'Cyber Dark Mode',
-    description: 'Sleek dark theme with purple glow & neon accents for AI & tech portfolios',
+    id: 'style-swiss-stripe',
+    name: 'Swiss Brand Stripe',
+    description: 'Thick left margin brand stripe with clean editorial typography',
     theme: {
-      primaryColor: '#a855f7',
-      secondaryColor: '#06b6d4',
-      textColor: '#f8fafc',
-      bgColor: '#090d16',
-      headerBgColor: '#111827',
-      headerTextColor: '#f8fafc',
-      accentColor: '#c084fc',
-      fontFamily: 'mono',
-      layout: 'header-banner',
+      primaryColor: '#b91c1c',
+      secondaryColor: '#dc2626',
+      textColor: '#171717',
+      bgColor: '#ffffff',
+      stripeColor: '#b91c1c',
+      accentColor: '#ef4444',
+      fontFamily: 'playfair',
+      layout: 'brand-margin-stripe',
       borderStyle: 'solid',
-      dividerColor: '#334155',
-      sectionHeaderStyle: 'filled-badge'
+      dividerColor: '#fee2e2',
+      sectionHeaderStyle: 'gradient-bar'
     }
   }
 ];

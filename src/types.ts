@@ -79,12 +79,13 @@ export interface ResumeStyleTheme {
   headerTextColor?: string;
   accentColor: string;
   fontFamily: 'inter' | 'roboto' | 'serif' | 'mono' | 'outfit' | 'playfair' | 'space-grotesk';
-  layout: 'single-column' | 'two-column-sidebar' | 'header-banner' | 'cards-modern';
+  layout: 'single-column' | 'sidebar-left' | 'sidebar-right' | 'header-banner' | 'cards-modern' | 'brand-margin-stripe';
   borderStyle: 'solid' | 'dashed' | 'none' | 'double';
   dividerColor: string;
   sectionHeaderStyle: 'clean-underline' | 'filled-badge' | 'uppercase-accent' | 'minimal-left-border' | 'pill-badge' | 'gradient-bar';
   cardBgColor?: string;
   sidebarBgColor?: string;
+  stripeColor?: string;
 }
 
 export interface ResumeStyle {
