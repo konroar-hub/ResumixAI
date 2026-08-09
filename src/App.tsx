@@ -317,25 +317,30 @@ export default function App() {
   const [pasteYamlError, setPasteYamlError] = useState('');
   const [copiedPromptSuccess, setCopiedPromptSuccess] = useState(false);
   const [enhancingBulletIndex, setEnhancingBulletIndex] = useState<number | null>(null);
-  const [wizardCustomTailoredCards, setWizardCustomTailoredCards] = useState<ExperienceItem[]>([]);
+  const [bulletCustomPrompts, setBulletCustomPrompts] = useState<{ [bulletId: string]: string }>({});
+  const [showPromptInput, setShowPromptInput] = useState<{ [bulletId: string]: boolean }>({});
 
   const handleAiEnhanceBullet = async (index: number) => {
-    const rawText = cardFormBulletList[index]?.text;
-    if (!rawText || !rawText.trim()) return;
+    const item = cardFormBulletList[index];
+    if (!item || !item.text.trim()) return;
     setEnhancingBulletIndex(index);
     try {
-      const enhanced = await enhanceBulletWithGemini(rawText, cardFormTitle || cardFormCategory);
-      setCardFormBulletList(prev => {
-        const updated = [...prev];
-        updated[index] = { ...updated[index], text: enhanced };
-        return updated;
-      });
+      const customPromptText = bulletCustomPrompts[item.id] || '';
+      const enhanced = await enhanceBulletWithGemini(item.text, cardFormTitle || 'Role Experience', customPromptText);
+      if (enhanced && enhanced.trim()) {
+        const updated = [...cardFormBulletList];
+        updated[index] = { ...updated[index], text: enhanced.trim() };
+        setCardFormBulletList(updated);
+      }
     } catch (e) {
-      console.error('AI Bullet Enhancer error:', e);
+      console.error('AI Bullet Enhance error:', e);
     } finally {
       setEnhancingBulletIndex(null);
     }
   };
+  const [wizardCustomTailoredCards, setWizardCustomTailoredCards] = useState<ExperienceItem[]>([]);
+
+
 
   const handleAiConvertTextToYaml = async () => {
     if (!pasteYamlInput.trim()) return;
@@ -1758,24 +1763,24 @@ export default function App() {
               </div>
 
               {/* Add Skill to Bank Form */}
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 shadow-md">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 shadow-md max-w-full overflow-hidden">
                 <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2">
                   <Plus className="w-4 h-4 text-indigo-400" />
                   <span>Add Skill to Master Bank</span>
                 </h3>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 max-w-full">
                   <input
                     type="text"
                     value={newSkillName}
                     onChange={(e) => setNewSkillName(e.target.value)}
                     placeholder="Skill Name (e.g. PyTorch, Kubernetes, GraphQL)"
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 min-w-0"
                   />
 
                   <select
                     value={newSkillTargetCardId}
                     onChange={(e) => setNewSkillTargetCardId(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 max-w-full sm:max-w-xs truncate"
                   >
                     <option value="">Attach to Entry (Optional)</option>
                     {(parsedProfile?.experiences || []).map(exp => (
@@ -1788,7 +1793,7 @@ export default function App() {
                   <button
                     onClick={addSkillToMasterBank}
                     disabled={!newSkillName.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow w-full sm:w-auto shrink-0"
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow w-full sm:w-auto shrink-0 whitespace-nowrap"
                   >
                     + Add to Bank
                   </button>
@@ -2233,22 +2238,28 @@ export default function App() {
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1">Card Type / Category</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
-                  {(['experience', 'project', 'education', 'about'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setCardFormCategory(cat)}
-                      className={`py-1.5 px-2 text-xs font-medium rounded-lg capitalize border transition ${
-                        cardFormCategory === cat
-                          ? 'bg-indigo-600 text-white border-indigo-500 font-bold'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                {editingCard.target === 'master' && editingCard.isNew ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                    {(['experience', 'project', 'education', 'about'] as const).map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCardFormCategory(cat)}
+                        className={`py-1.5 px-2 text-xs font-medium rounded-lg capitalize border transition ${
+                          cardFormCategory === cat
+                            ? 'bg-indigo-600 text-white border-indigo-500 font-bold'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {cat === 'about' ? 'About Me' : cat}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs bg-slate-950 border border-slate-800 text-indigo-300 font-semibold px-3 py-1.5 rounded-lg capitalize inline-block">
+                    Section: {cardFormCategory === 'about' ? 'About Me' : cardFormCategory} (Locked)
+                  </span>
+                )}
               </div>
 
               <div>
@@ -2327,9 +2338,9 @@ export default function App() {
                   />
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-medium text-slate-400">Bullet Achievements (Distinct Entities)</label>
+                    <label className="block text-[11px] font-medium text-slate-400">Bullet Achievements</label>
                     <button
                       type="button"
                       onClick={() => setCardFormBulletList([...cardFormBulletList, { id: `b-${Date.now()}-${cardFormBulletList.length}`, text: '' }])}
@@ -2339,43 +2350,72 @@ export default function App() {
                       <span>Add Bullet</span>
                     </button>
                   </div>
-                  <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {cardFormBulletList.map((item, idx) => (
-                      <div key={item.id} className="flex items-center space-x-2">
-                        <span className="text-[10px] text-slate-500 font-mono w-12 truncate">{item.id.slice(-5)}</span>
-                        <input
-                          type="text"
-                          value={item.text}
-                          onChange={(e) => {
-                            const updated = [...cardFormBulletList];
-                            updated[idx] = { ...updated[idx], text: e.target.value };
-                            setCardFormBulletList(updated);
-                          }}
-                          placeholder="Enter bullet achievement text..."
-                          className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAiEnhanceBullet(idx)}
-                          disabled={!item.text.trim() || enhancingBulletIndex === idx}
-                          className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2 py-1 rounded transition disabled:opacity-40"
-                          title="Enhance Bullet with Gemini AI"
-                        >
-                          {enhancingBulletIndex === idx ? (
-                            <span className="w-3 h-3 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
-                          ) : (
-                            <Wand2 className="w-3 h-3 text-indigo-400" />
+                      <div key={item.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <textarea
+                            value={item.text}
+                            onChange={(e) => {
+                              const updated = [...cardFormBulletList];
+                              updated[idx] = { ...updated[idx], text: e.target.value };
+                              setCardFormBulletList(updated);
+                            }}
+                            placeholder="Enter bullet achievement statement..."
+                            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 min-h-[64px] resize-y font-sans leading-relaxed"
+                          />
+                          {cardFormBulletList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setCardFormBulletList(cardFormBulletList.filter((_, i) => i !== idx))}
+                              className="text-slate-500 hover:text-rose-400 text-xs p-1"
+                              title="Delete Bullet"
+                            >
+                              ✕
+                            </button>
                           )}
-                          <span className="hidden sm:inline">AI Enhance</span>
-                        </button>
-                        {cardFormBulletList.length > 1 && (
+                        </div>
+
+                        {/* AI Enhance Controls */}
+                        <div className="flex items-center justify-between gap-2 pt-1">
                           <button
                             type="button"
-                            onClick={() => setCardFormBulletList(cardFormBulletList.filter((_, i) => i !== idx))}
-                            className="text-slate-500 hover:text-rose-400 text-xs p-1"
+                            onClick={() => setShowPromptInput(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                            className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 font-medium"
                           >
-                            ✕
+                            <Sparkles className="w-3 h-3" />
+                            <span>{showPromptInput[item.id] ? 'Hide Custom Prompt' : '+ Add Custom AI Prompt'}</span>
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAiEnhanceBullet(idx)}
+                            disabled={!item.text.trim() || enhancingBulletIndex === idx}
+                            className="flex items-center space-x-1.5 text-xs bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2.5 py-1 rounded-lg transition disabled:opacity-40"
+                            title="Enhance Bullet with Gemini AI"
+                          >
+                            {enhancingBulletIndex === idx ? (
+                              <>
+                                <span className="w-3 h-3 border-2 border-indigo-300/30 border-t-indigo-300 rounded-full animate-spin"></span>
+                                <span>Enhancing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>AI Enhance</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {showPromptInput[item.id] && (
+                          <input
+                            type="text"
+                            value={bulletCustomPrompts[item.id] || ''}
+                            onChange={(e) => setBulletCustomPrompts({ ...bulletCustomPrompts, [item.id]: e.target.value })}
+                            placeholder="Optional custom instruction for AI (e.g. emphasize latency, add metrics, make executive)..."
+                            className="w-full bg-slate-900 border border-indigo-500/40 rounded-lg px-3 py-1.5 text-xs text-indigo-200 focus:outline-none placeholder:text-slate-500"
+                          />
                         )}
                       </div>
                     ))}

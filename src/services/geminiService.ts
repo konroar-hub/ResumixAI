@@ -216,13 +216,20 @@ ${resumeText.slice(0, 5000)}`;
 /**
  * 3. AI Bullet Achievement Enhancer (gemini-flash-latest)
  */
-export async function enhanceBulletWithGemini(rawBulletText: string, contextTitle: string): Promise<string> {
+export async function enhanceBulletWithGemini(
+  rawBulletText: string,
+  contextTitle: string,
+  customPrompt?: string
+): Promise<string> {
   if (!ai || !rawBulletText.trim()) return rawBulletText;
 
   try {
-    const prompt = `Rewrite this resume text into 1 concise, high-impact ATS achievement statement with strong action verbs and quantified impact metrics. Base rewrites strictly on true facts without inventing false details. Return statement only without quotes:
-CONTEXT: ${contextTitle}
-TEXT: ${rawBulletText}`;
+    const prompt = `Rewrite this resume achievement bullet into 1 concise, high-impact ATS bullet point with strong action verbs and quantified impact metrics. Base rewrites strictly on true facts without inventing false details.
+ROLE CONTEXT: ${contextTitle}
+${customPrompt && customPrompt.trim() ? `USER CUSTOM INSTRUCTION / PROMPT: ${customPrompt.trim()}\n` : ''}
+ORIGINAL BULLET TEXT: ${rawBulletText}
+
+Return rewritten bullet statement only without quotes:`;
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
