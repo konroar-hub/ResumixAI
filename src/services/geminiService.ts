@@ -335,40 +335,43 @@ export async function generateResumeStyleWithGemini(userDesignPrompt: string): P
       description: userDesignPrompt || 'AI-generated custom resume theme',
       isAiGenerated: true,
       theme: {
-        primaryColor: '#6366f1',
-        secondaryColor: '#06b6d4',
+        primaryColor: '#0284c7',
+        secondaryColor: '#0369a1',
         textColor: '#0f172a',
         bgColor: '#ffffff',
-        accentColor: '#818cf8',
+        accentColor: '#38bdf8',
         fontFamily: 'outfit',
-        layout: 'single-column',
+        layout: 'header-banner',
         borderStyle: 'solid',
         dividerColor: '#e2e8f0',
-        sectionHeaderStyle: 'uppercase-accent'
+        sectionHeaderStyle: 'pill-badge'
       }
     };
   }
 
   try {
-    const prompt = `You are an expert UI/UX designer specializing in modern resume typography, color harmonies, and document design.
-Generate a complete, beautiful resume design style based on this user prompt: "${userDesignPrompt}"
+    const prompt = `You are a world-class UI/UX designer and typography expert specializing in modern, high-impact resume templates.
+BE BOLD AND CREATIVE! Generate a distinct, vibrant, and drastically customized resume template style based on the user's prompt: "${userDesignPrompt}"
 
-Return JSON ONLY matching this exact structure:
+Your output MUST be JSON ONLY matching this exact structure:
 {
-  "name": "Catchy Style Name",
-  "description": "Short description of design aesthetic",
+  "name": "Catchy & Unique Style Name",
+  "description": "Visual summary of theme palette and layout",
   "theme": {
-    "primaryColor": "#HEX",
-    "secondaryColor": "#HEX",
-    "textColor": "#HEX",
-    "bgColor": "#HEX",
-    "headerBgColor": "#HEX or leave empty string if white/transparent",
-    "accentColor": "#HEX",
-    "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit",
-    "layout": "single-column" | "sidebar-left" | "modern-grid",
+    "primaryColor": "#HEX (Main dominant header/brand color)",
+    "secondaryColor": "#HEX (Subtitle/company text color)",
+    "textColor": "#HEX (Body text color)",
+    "bgColor": "#HEX (Page background color, e.g. #ffffff, #090d16, #f8fafc, #f5f3ff)",
+    "headerBgColor": "#HEX (Full width header banner color or empty string if transparent)",
+    "headerTextColor": "#HEX (Header name text color)",
+    "sidebarBgColor": "#HEX (Left sidebar background color for two-column layouts)",
+    "cardBgColor": "#HEX (Background tint color for card containers)",
+    "accentColor": "#HEX (Highlights, bullets, skill badges)",
+    "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
+    "layout": "single-column" | "two-column-sidebar" | "header-banner" | "cards-modern",
     "borderStyle": "solid" | "dashed" | "none" | "double",
-    "dividerColor": "#HEX",
-    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border"
+    "dividerColor": "#HEX (Line dividers & border colors)",
+    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar"
   }
 }`;
 
@@ -379,8 +382,9 @@ Return JSON ONLY matching this exact structure:
     });
 
     const parsed = JSON.parse(response.text || '{}');
-    const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'inter';
-    const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'uppercase-accent';
+    const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'outfit';
+    const validLayout = ['single-column', 'two-column-sidebar', 'header-banner', 'cards-modern'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'header-banner';
+    const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'pill-badge';
 
     return {
       id: `style-ai-${Date.now()}`,
@@ -393,9 +397,12 @@ Return JSON ONLY matching this exact structure:
         textColor: parsed.theme?.textColor || '#0f172a',
         bgColor: parsed.theme?.bgColor || '#ffffff',
         headerBgColor: parsed.theme?.headerBgColor || undefined,
+        headerTextColor: parsed.theme?.headerTextColor || undefined,
+        sidebarBgColor: parsed.theme?.sidebarBgColor || undefined,
+        cardBgColor: parsed.theme?.cardBgColor || undefined,
         accentColor: parsed.theme?.accentColor || '#6366f1',
         fontFamily: validFont,
-        layout: 'single-column',
+        layout: validLayout,
         borderStyle: 'solid',
         dividerColor: parsed.theme?.dividerColor || '#e2e8f0',
         sectionHeaderStyle: validHeaderStyle

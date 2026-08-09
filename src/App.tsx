@@ -193,6 +193,15 @@ export default function App() {
     return resumeStyles.find(s => s.id === activeStyleId) || resumeStyles[0] || DEFAULT_RESUME_STYLES[0];
   }, [resumeStyles, activeStyleId]);
 
+  const deleteResumeStyle = (styleId: string) => {
+    if (resumeStyles.length <= 1) return;
+    const updated = resumeStyles.filter(s => s.id !== styleId);
+    setResumeStyles(updated);
+    if (activeStyleId === styleId) {
+      setActiveStyleId(updated[0]?.id || 'style-executive');
+    }
+  };
+
   // Load data from Firestore when user logs in
   useEffect(() => {
     if (currentUser?.uid) {
@@ -1163,6 +1172,20 @@ export default function App() {
                           }`}
                           style={{ backgroundColor: st.theme.bgColor }}
                         >
+                          {resumeStyles.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteResumeStyle(st.id);
+                              }}
+                              className="absolute top-1.5 right-1.5 p-1 bg-slate-900/80 hover:bg-rose-900/90 text-slate-400 hover:text-rose-200 rounded-md transition border border-slate-700/50 opacity-0 group-hover:opacity-100 z-10"
+                              title="Delete Resume Style"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+
                           {/* Tile Header & Mini Preview lines */}
                           <div className="space-y-1.5">
                             <div
@@ -1764,12 +1787,12 @@ export default function App() {
                       style={{
                         backgroundColor: activeStyle.theme.bgColor,
                         color: activeStyle.theme.textColor,
-                        fontFamily: activeStyle.theme.fontFamily === 'serif' ? 'Georgia, serif' : activeStyle.theme.fontFamily === 'mono' ? 'Courier New, monospace' : activeStyle.theme.fontFamily === 'outfit' ? 'Outfit, sans-serif' : 'Inter, sans-serif'
+                        fontFamily: activeStyle.theme.fontFamily === 'serif' || activeStyle.theme.fontFamily === 'playfair' ? 'Georgia, serif' : activeStyle.theme.fontFamily === 'mono' ? 'Courier New, monospace' : activeStyle.theme.fontFamily === 'outfit' || activeStyle.theme.fontFamily === 'space-grotesk' ? 'Outfit, sans-serif' : 'Inter, sans-serif'
                       }}
                     >
-                    {/* Header */}
+                    {/* Header Banner or Standard Header */}
                     <div 
-                      className="border-b-2 pb-4 text-center transition-all rounded-t-lg p-3"
+                      className={`pb-4 text-center transition-all ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
                       style={{
                         borderColor: activeStyle.theme.dividerColor,
                         backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
@@ -1777,107 +1800,231 @@ export default function App() {
                     >
                       <h1 
                         className="text-2xl font-bold tracking-tight uppercase"
-                        style={{ color: activeStyle.theme.primaryColor }}
+                        style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.primaryColor }}
                       >
                         {parsedProfile.name}
                       </h1>
-                      <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.secondaryColor }}>
+                      <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.headerTextColor ? activeStyle.theme.headerTextColor : activeStyle.theme.secondaryColor }}>
                         {activeResume?.targetRole || parsedProfile.title}
                       </p>
-                      <p className="text-[11px] opacity-80 mt-0.5" style={{ color: activeStyle.theme.textColor }}>
+                      <p className="text-[11px] opacity-80 mt-0.5" style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.textColor }}>
                         {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
                       </p>
                     </div>
 
-                    {/* 1. About Me (First Thing Below Contact Details) */}
-                    {(() => {
-                      const items = (parsedProfile?.experiences || []).filter(e => 
-                        (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
-                      );
-                      const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === 'about');
-                      const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
-                      const totalAboutItems = [...customItems, ...unTailoredItems];
-                      if (totalAboutItems.length === 0) return null;
+                    {/* Layout Body Renderer */}
+                    {activeStyle.theme.layout === 'two-column-sidebar' ? (
+                      /* Split Two-Column Sidebar Layout */
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        {/* Left Sidebar Column */}
+                        <div 
+                          className="md:col-span-4 p-4 rounded-xl space-y-4 border"
+                          style={{ 
+                            backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
+                            borderColor: activeStyle.theme.dividerColor
+                          }}
+                        >
+                          {/* 1. About Me Sidebar */}
+                          {(() => {
+                            const items = (parsedProfile?.experiences || []).filter(e => 
+                              (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                            );
+                            const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === 'about');
+                            const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                            const totalAboutItems = [...customItems, ...unTailoredItems];
+                            if (totalAboutItems.length === 0) return null;
 
-                      return (
-                        <div className="space-y-1.5">
-                          <h2 
-                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
-                          >
-                            About Me
-                          </h2>
-                          {totalAboutItems.map(exp => (
-                            <p key={exp.id} className="text-[11px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
-                              {formatBulletText(exp.bullets?.[0] || '')}
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    })()}
-
-                    {/* 2. Technical Skills & Core Competencies (Below About Me) */}
-                    {(() => {
-                      const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
-                        ? activeResume.selectedSkills
-                        : autoFilledWizardSkills;
-
-                      if (!activeSkills || activeSkills.length === 0) return null;
-
-                      return (
-                        <div className="space-y-1.5">
-                          <h2 
-                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
-                          >
-                            Technical Skills & Core Competencies
-                          </h2>
-                          <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
-                            {activeSkills.join(' • ')}
-                          </p>
-                        </div>
-                      );
-                    })()}
-
-                    {/* 3. Section Cards Rendered in Order (Experience, Project, Education) */}
-                    {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
-                      const items = (parsedProfile?.experiences || []).filter(e => 
-                        (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
-                      );
-                      const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === sec);
-                      const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
-                      const totalItems = [...customItems, ...unTailoredItems];
-                      if (totalItems.length === 0) return null;
-
-                      return (
-                        <div key={sec} className="space-y-2">
-                          <h2 
-                            className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize"
-                            style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
-                          >
-                            {sec}
-                          </h2>
-                          {totalItems.map(exp => (
-                            <div key={exp.id} className="space-y-0.5">
-                              <div className="flex justify-between items-baseline text-[11px]">
-                                <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
-                                <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{exp.company} {exp.period ? `| ${exp.period}` : ''}</span>
-                              </div>
-                              {exp.skills && exp.skills.length > 0 && (
-                                <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
-                                  Skills: {exp.skills.join(', ')}
-                                </div>
-                              )}
-                              <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
-                                {exp.bullets?.map((b, i) => (
-                                  <li key={i}>{formatBulletText(b)}</li>
+                            return (
+                              <div className="space-y-1.5">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  About Me
+                                </h3>
+                                {totalAboutItems.map(exp => (
+                                  <p key={exp.id} className="text-[10px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
+                                    {formatBulletText(exp.bullets?.[0] || '')}
+                                  </p>
                                 ))}
-                              </ul>
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })()}
+
+                          {/* 2. Technical Skills Sidebar */}
+                          {(() => {
+                            const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
+                              ? activeResume.selectedSkills
+                              : autoFilledWizardSkills;
+
+                            if (!activeSkills || activeSkills.length === 0) return null;
+
+                            return (
+                              <div className="space-y-1.5">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  Core Skills
+                                </h3>
+                                <div className="flex flex-wrap gap-1">
+                                  {activeSkills.map(sk => (
+                                    <span key={sk} className="text-[10px] px-2 py-0.5 rounded font-mono border" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
+                                      {sk}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                      );
-                    })}
+
+                        {/* Right Main Column */}
+                        <div className="md:col-span-8 space-y-5">
+                          {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
+                            const items = (parsedProfile?.experiences || []).filter(e => 
+                              (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                            );
+                            const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === sec);
+                            const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                            const totalItems = [...customItems, ...unTailoredItems];
+                            if (totalItems.length === 0) return null;
+
+                            return (
+                              <div key={sec} className="space-y-2">
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                  {sec}
+                                </h2>
+                                {totalItems.map(exp => {
+                                  const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                  const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
+                                  const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+
+                                  return (
+                                    <div key={exp.id} className="space-y-0.5">
+                                      <div className="flex justify-between items-baseline text-[11px]">
+                                        <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
+                                        {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                      </div>
+                                      {exp.skills && exp.skills.length > 0 && (
+                                        <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                          Skills: {exp.skills.join(', ')}
+                                        </div>
+                                      )}
+                                      <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                        {exp.bullets?.map((b, i) => (
+                                          <li key={i}>{formatBulletText(b)}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Standard / Cards / Header Banner Layout */
+                      <div className="space-y-5">
+                        {/* 1. About Me */}
+                        {(() => {
+                          const items = (parsedProfile?.experiences || []).filter(e => 
+                            (e.category || 'experience') === 'about' && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                          );
+                          const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === 'about');
+                          const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                          const totalAboutItems = [...customItems, ...unTailoredItems];
+                          if (totalAboutItems.length === 0) return null;
+
+                          return (
+                            <div className="space-y-1.5">
+                              <h2 
+                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                              >
+                                About Me
+                              </h2>
+                              {totalAboutItems.map(exp => (
+                                <p key={exp.id} className="text-[11px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
+                                  {formatBulletText(exp.bullets?.[0] || '')}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 2. Technical Skills */}
+                        {(() => {
+                          const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
+                            ? activeResume.selectedSkills
+                            : autoFilledWizardSkills;
+
+                          if (!activeSkills || activeSkills.length === 0) return null;
+
+                          return (
+                            <div className="space-y-1.5">
+                              <h2 
+                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                              >
+                                Technical Skills & Core Competencies
+                              </h2>
+                              <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
+                                {activeSkills.join(' • ')}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 3. Section Cards */}
+                        {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
+                          const items = (parsedProfile?.experiences || []).filter(e => 
+                            (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
+                          );
+                          const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === sec);
+                          const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                          const totalItems = [...customItems, ...unTailoredItems];
+                          if (totalItems.length === 0) return null;
+
+                          return (
+                            <div key={sec} className="space-y-2">
+                              <h2 
+                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize"
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                              >
+                                {sec}
+                              </h2>
+                              {totalItems.map(exp => {
+                                const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
+                                const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+
+                                return (
+                                  <div 
+                                    key={exp.id} 
+                                    className={`space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`}
+                                    style={{ 
+                                      backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent',
+                                      borderColor: activeStyle.theme.dividerColor
+                                    }}
+                                  >
+                                    <div className="flex justify-between items-baseline text-[11px]">
+                                      <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
+                                      {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                    </div>
+                                    {exp.skills && exp.skills.length > 0 && (
+                                      <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                        Skills: {exp.skills.join(', ')}
+                                      </div>
+                                    )}
+                                    <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                      {exp.bullets?.map((b, i) => (
+                                        <li key={i}>{formatBulletText(b)}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     </div>
                   )}
                 </div>
