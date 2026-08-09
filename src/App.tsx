@@ -33,7 +33,15 @@ import {
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
 import { tailorResumeWithGemini } from './services/geminiService';
-import { auth, onAuthStateChanged, User, signOut, isFirebaseConfigured } from './firebase';
+import {
+  auth,
+  onAuthStateChanged,
+  User,
+  signOut,
+  isFirebaseConfigured,
+  saveUserDataToFirestore,
+  loadUserDataFromFirestore
+} from './firebase';
 
 const formatBulletText = (b: any): string => {
   if (!b) return '';
@@ -147,24 +155,46 @@ export default function App() {
     return DEFAULT_JOB_TRACKER;
   });
 
-  // Sync to localStorage
+  // Load data from Firestore when user logs in
+  useEffect(() => {
+    if (currentUser?.uid) {
+      loadUserDataFromFirestore(currentUser.uid).then(cloudData => {
+        if (cloudData) {
+          if (cloudData.profile) setParsedProfile(cloudData.profile);
+          if (cloudData.resumes) setResumes(cloudData.resumes);
+          if (cloudData.jobsList) setJobsList(cloudData.jobsList);
+        }
+      });
+    }
+  }, [currentUser]);
+
+  // Sync to localStorage & Firestore automatically on state mutations
   useEffect(() => {
     try {
       localStorage.setItem('rt_profile', JSON.stringify(parsedProfile));
     } catch (e) {}
-  }, [parsedProfile]);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { profile: parsedProfile });
+    }
+  }, [parsedProfile, currentUser]);
 
   useEffect(() => {
     try {
       localStorage.setItem('rt_resumes', JSON.stringify(resumes));
     } catch (e) {}
-  }, [resumes]);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { resumes });
+    }
+  }, [resumes, currentUser]);
 
   useEffect(() => {
     try {
       localStorage.setItem('rt_jobs', JSON.stringify(jobsList));
     } catch (e) {}
-  }, [jobsList]);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { jobsList });
+    }
+  }, [jobsList, currentUser]);
   const [jobDescription, setJobDescription] = useState('');
 
   // 2-Stage Create Resume Variant Wizard State

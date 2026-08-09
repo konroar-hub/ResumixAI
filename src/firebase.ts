@@ -10,6 +10,7 @@ import {
   User
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { MasterProfile, ResumeItem, JobRecord } from './types';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
@@ -20,7 +21,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789:web:abcdef'
 };
 
-const isFirebaseConfigured = Boolean(
+export const isFirebaseConfigured = Boolean(
   import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID
 );
 
@@ -28,6 +29,39 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+
+export interface UserStoreData {
+  profile?: MasterProfile;
+  resumes?: ResumeItem[];
+  jobsList?: JobRecord[];
+}
+
+export async function saveUserDataToFirestore(userId: string, data: UserStoreData): Promise<void> {
+  if (!isFirebaseConfigured || !userId) return;
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+      ...data,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Firestore write error:', error);
+  }
+}
+
+export async function loadUserDataFromFirestore(userId: string): Promise<UserStoreData | null> {
+  if (!isFirebaseConfigured || !userId) return null;
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      return snap.data() as UserStoreData;
+    }
+  } catch (error) {
+    console.error('Firestore read error:', error);
+  }
+  return null;
+}
 
 export {
   auth,
@@ -38,7 +72,6 @@ export {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  isFirebaseConfigured,
   doc,
   getDoc,
   setDoc
