@@ -120,9 +120,9 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
             </div>
             <div>
               <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                Resume Tailor
+                Resumix AI
                 <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
-                  AI v2.0
+                  v2.0
                 </span>
               </span>
             </div>
@@ -356,7 +356,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <FileText className="w-4 h-4 text-indigo-400" />
-            <span className="font-semibold text-slate-400">Resume Tailor v2.0</span>
+            <span className="font-semibold text-slate-400">Resumix AI</span>
             <span>—</span>
             <span>Deployable on Vercel with Firebase & Gemini AI</span>
           </div>
@@ -376,7 +376,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
               <div className="flex items-center space-x-2">
                 <ShieldCheck className="w-5 h-5 text-indigo-400" />
                 <h3 className="text-base font-bold text-white">
-                  {authMode === 'login' ? 'Sign In to Resume Tailor' : 'Create New Account'}
+                  {authMode === 'login' ? 'Sign In to Resumix AI' : 'Create New Account'}
                 </h3>
               </div>
               <button

@@ -675,7 +675,7 @@ export default function App() {
                 <Cpu className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="font-bold text-base text-white leading-tight">Resume Tailor</h1>
+                <h1 className="font-bold text-base text-white leading-tight">Resumix AI</h1>
                 <span className="text-xs text-indigo-400 font-medium">Card Builder Engine</span>
               </div>
             </div>
