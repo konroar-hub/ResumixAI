@@ -9,7 +9,13 @@ const ai = isGeminiConfigured ? new GoogleGenAI({ apiKey }) : null;
 
 export interface TailoredCardOverride {
   id: string;
+  category?: 'experience' | 'project' | 'about';
   tailoredBullets: string[];
+}
+
+export interface GeneratedAboutCard {
+  title: string;
+  bullets: string[];
 }
 
 export interface GeminiTailorResponse {
@@ -17,6 +23,7 @@ export interface GeminiTailorResponse {
   suggestedSkills: string[];
   tailoringNotes: string;
   tailoredCardOverrides?: TailoredCardOverride[];
+  generatedAboutCard?: GeneratedAboutCard;
 }
 
 export interface GeminiJobAnalysis {
@@ -28,8 +35,8 @@ export interface GeminiJobAnalysis {
 
 /**
  * 1. AI Job Posting Tailoring & Card Rewriting (gemini-2.5-flash)
- * Matches master experience cards to target job posting text, extracts skills, and rewrites bullets
- * strictly aligned to job description keywords without inventing facts.
+ * Matches master experience & project cards to target job posting text, extracts skills, rewrites bullets
+ * strictly aligned to job description keywords without inventing facts, and auto-generates About card if missing.
  */
 export async function tailorResumeWithGemini(
   masterProfile: MasterProfile,
@@ -62,23 +69,28 @@ export async function tailorResumeWithGemini(
       bullets: (e.bullets || []).map(b => (typeof b === 'string' ? b : b?.text || ''))
     }));
 
-    const prompt = `Act as an expert ATS Resume Optimization Engine.
-Analyze Candidate Cards against the Target Job Posting.
+    const hasAboutCard = (masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about');
 
-Tasks:
-1. Identify relevant card IDs for the target role.
-2. Extract key technical skills from the job posting.
-3. For each relevant card, rewrite its bullet points to naturally incorporate target job keywords.
-STRICT CONSTRAINT: Base rewrites ONLY on true existing facts in the original bullets. DO NOT FABRICATE, INVENT, OR MAKE UP FALSE EXPERIENCES, COMPANIES, METRICS, OR CLAIMS.
+    const prompt = `Act as an expert ATS Resume Strategy Engine.
+Analyze Candidate Master Cards against the Target Job Posting.
 
-Return JSON only matching this schema:
+RULES FOR TAILORING:
+1. Select relevant card IDs across experience, project, education, and about categories.
+2. TAILOR EXPERIENCE & PROJECT CARDS: For each selected 'experience' and 'project' card, rewrite bullet points to naturally incorporate target job keywords.
+   STRICT RULE: Base bullet rewrites STRICTLY on existing true facts. DO NOT FABRICATE, INVENT, OR MAKE UP FALSE EXPERIENCES, COMPANIES, OR METRICS.
+3. DO NOT TAILOR EDUCATION CARDS.
+${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Since no 'about' card exists, generate a 2-bullet About Bio card tailored for this target role." : "4. Tailor existing About card if present."}
+
+Return JSON only:
 {
   "selectedCardIds": ["card-id-1"],
   "suggestedSkills": ["Skill 1", "Skill 2"],
-  "tailoringNotes": "Brief 1-2 sentence strategy rationale",
+  "tailoringNotes": "Brief 1-sentence strategy rationale",
   "tailoredCardOverrides": [
-    { "id": "card-id-1", "tailoredBullets": ["Enhanced bullet 1", "Enhanced bullet 2"] }
-  ]
+    { "id": "exp-1", "category": "experience", "tailoredBullets": ["Rewritten bullet 1"] },
+    { "id": "proj-1", "category": "project", "tailoredBullets": ["Rewritten project bullet 1"] }
+  ],
+  ${!hasAboutCard ? '"generatedAboutCard": { "title": "Professional Elevator Bio", "bullets": ["Bio line 1", "Bio line 2"] }' : '"generatedAboutCard": null'}
 }
 
 CARDS:
@@ -102,7 +114,8 @@ ${jobPostingText.slice(0, 4000)}`;
       selectedCardIds: Array.isArray(parsed.selectedCardIds) ? parsed.selectedCardIds : [],
       suggestedSkills: Array.isArray(parsed.suggestedSkills) ? parsed.suggestedSkills : [],
       tailoringNotes: parsed.tailoringNotes || 'Tailored with Gemini 2.5 Flash.',
-      tailoredCardOverrides: Array.isArray(parsed.tailoredCardOverrides) ? parsed.tailoredCardOverrides : []
+      tailoredCardOverrides: Array.isArray(parsed.tailoredCardOverrides) ? parsed.tailoredCardOverrides : [],
+      generatedAboutCard: parsed.generatedAboutCard || undefined
     };
   } catch (error) {
     console.error('Gemini tailoring error:', error);

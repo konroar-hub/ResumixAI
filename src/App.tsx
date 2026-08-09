@@ -290,10 +290,14 @@ export default function App() {
       const targetRoleName = stage1CompanyName ? `${stage1CompanyName} Role` : (newResumeRole || 'Target Role');
       const generatedCustomCards: ExperienceItem[] = [];
 
+      // 1. Process Tailored Card Overrides for Experience & Project cards
       if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
         res.tailoredCardOverrides.forEach(override => {
           const origCard = (parsedProfile?.experiences || []).find(e => e.id === override.id);
           if (origCard && override.tailoredBullets && override.tailoredBullets.length > 0) {
+            // Do not tailor education cards
+            if ((origCard.category || 'experience') === 'education') return;
+
             generatedCustomCards.push({
               ...origCard,
               id: `ai-tailored-${origCard.id}-${Date.now()}`,
@@ -305,13 +309,35 @@ export default function App() {
         });
       }
 
+      // 2. Auto-generate About Card if missing in Master Profile
+      const existingAboutCard = (parsedProfile?.experiences || []).find(e => (e.category || 'experience') === 'about');
+      if (!existingAboutCard && res.generatedAboutCard && res.generatedAboutCard.bullets?.length > 0) {
+        generatedCustomCards.push({
+          id: `ai-tailored-about-${Date.now()}`,
+          category: 'about',
+          title: res.generatedAboutCard.title || 'Professional Elevator Bio',
+          company: '',
+          period: '',
+          location: '',
+          skills: [],
+          bullets: res.generatedAboutCard.bullets,
+          isAiTailored: true,
+          tailoredForRole: targetRoleName
+        });
+      }
+
       // Store variant-specific AI tailored cards without altering Master Repository
       setWizardCustomTailoredCards(generatedCustomCards);
 
       const aiCardIds = generatedCustomCards.map(c => c.id);
       const masterIdsToSelect = (res.selectedCardIds || []).filter(id => !generatedCustomCards.some(ac => ac.id.includes(id)));
 
-      setWizardSelectedExpIds(new Set([...aiCardIds, ...masterIdsToSelect]));
+      // Include education cards by default
+      const eduCardIds = (parsedProfile?.experiences || [])
+        .filter(e => (e.category || 'experience') === 'education')
+        .map(e => e.id);
+
+      setWizardSelectedExpIds(new Set([...aiCardIds, ...masterIdsToSelect, ...eduCardIds]));
 
       if (res.suggestedSkills.length > 0) {
         setWizardExtraSkills(new Set(res.suggestedSkills));
@@ -1189,7 +1215,8 @@ export default function App() {
                                   {(() => {
                                     const masterCards = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === currentCategory);
                                     const aiCards = wizardCustomTailoredCards.filter(c => (c.category || 'experience') === currentCategory);
-                                    const combinedCategoryCards = [...aiCards, ...masterCards];
+                                    const unTailoredMasterCards = masterCards.filter(m => !aiCards.some(a => a.id.includes(m.id)));
+                                    const combinedCategoryCards = [...aiCards, ...unTailoredMasterCards];
 
                                     return combinedCategoryCards.map((exp) => {
                                       const isSelected = wizardSelectedExpIds.has(exp.id);
@@ -1458,12 +1485,12 @@ export default function App() {
 
                     {/* Section Cards Rendered in Order */}
                     {SECTION_ORDER.filter(s => s !== 'skills').map(sec => {
-
                       const items = (parsedProfile?.experiences || []).filter(e => 
                         (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
                       );
                       const customItems = (activeResume?.customExperiences || []).filter(c => (c.category || 'experience') === sec);
-                      const totalItems = [...customItems, ...items];
+                      const unTailoredItems = items.filter(m => !customItems.some(c => c.id.includes(m.id)));
+                      const totalItems = [...customItems, ...unTailoredItems];
                       if (totalItems.length === 0) return null;
 
                       return (
