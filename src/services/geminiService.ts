@@ -76,7 +76,7 @@ Analyze Candidate Master Cards against the Target Job Posting.
 
 RULES FOR TAILORING:
 1. Select relevant card IDs across experience, project, education, and about categories.
-2. TAILOR EXPERIENCE & PROJECT CARDS: For each selected 'experience' and 'project' card, rewrite bullet points to naturally incorporate target job keywords.
+2. TAILOR EXPERIENCE & PROJECT CARDS: For EVERY selected 'experience' and 'project' card, rewrite its bullet points to naturally incorporate keywords from the target job posting.
    STRICT RULE: Base bullet rewrites STRICTLY on existing true facts. DO NOT FABRICATE, INVENT, OR MAKE UP FALSE EXPERIENCES, COMPANIES, OR METRICS.
 3. DO NOT TAILOR EDUCATION CARDS.
 ${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Since no 'about' card exists, generate a 2-bullet About Bio card tailored for this target role." : "4. Tailor existing About card if present."}
@@ -108,7 +108,24 @@ ${jobPostingText.slice(0, 4000)}`;
     });
 
     const text = response.text || '';
-    const parsed = JSON.parse(text);
+    const cleanJson = text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch (e) {
+      console.warn('Gemini JSON parse failed, extracting clean JSON substring:', e);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          parsed = JSON.parse(match[0]);
+        } catch (err) {}
+      }
+    }
 
     return {
       selectedCardIds: Array.isArray(parsed.selectedCardIds) ? parsed.selectedCardIds : [],

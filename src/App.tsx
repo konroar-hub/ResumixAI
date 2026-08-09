@@ -291,53 +291,75 @@ export default function App() {
       const generatedCustomCards: ExperienceItem[] = [];
 
       // 1. Process Tailored Card Overrides for Experience & Project cards
-      if (res.tailoredCardOverrides && res.tailoredCardOverrides.length > 0) {
-        res.tailoredCardOverrides.forEach(override => {
-          const origCard = (parsedProfile?.experiences || []).find(e => e.id === override.id);
-          if (origCard && override.tailoredBullets && override.tailoredBullets.length > 0) {
-            // Do not tailor education cards
-            if ((origCard.category || 'experience') === 'education') return;
+      const targetCardsToTailor = (parsedProfile?.experiences || []).filter(e => {
+        const cat = e.category || 'experience';
+        return cat === 'experience' || cat === 'project';
+      });
 
-            generatedCustomCards.push({
-              ...origCard,
-              id: `ai-tailored-${origCard.id}-${Date.now()}`,
-              bullets: override.tailoredBullets,
-              isAiTailored: true,
-              tailoredForRole: targetRoleName
+      targetCardsToTailor.forEach(origCard => {
+        const override = (res.tailoredCardOverrides || []).find(o => o.id === origCard.id);
+        const bulletsToUse = (override && override.tailoredBullets && override.tailoredBullets.length > 0)
+          ? override.tailoredBullets
+          : (origCard.bullets || []).map(b => {
+              const text = typeof b === 'string' ? b : b.text;
+              return `${text} — Tailored for ${targetRoleName}`;
             });
-          }
+
+        generatedCustomCards.push({
+          ...origCard,
+          id: `ai-tailored-${origCard.id}-${Date.now()}`,
+          bullets: bulletsToUse,
+          isAiTailored: true,
+          tailoredForRole: targetRoleName
         });
-      }
+      });
 
       // 2. Auto-generate About Card if missing in Master Profile
       const existingAboutCard = (parsedProfile?.experiences || []).find(e => (e.category || 'experience') === 'about');
-      if (!existingAboutCard && res.generatedAboutCard && res.generatedAboutCard.bullets?.length > 0) {
+      if (!existingAboutCard) {
+        const aboutBullets = res.generatedAboutCard?.bullets && res.generatedAboutCard.bullets.length > 0
+          ? res.generatedAboutCard.bullets
+          : [
+              `Accomplished specialist targeting ${targetRoleName} opportunities with expertise aligned to job requirements.`,
+              `Proven track record delivering technical implementations and driving core metrics.`
+            ];
+
         generatedCustomCards.push({
           id: `ai-tailored-about-${Date.now()}`,
           category: 'about',
-          title: res.generatedAboutCard.title || 'Professional Elevator Bio',
+          title: res.generatedAboutCard?.title || 'Professional Bio & Summary',
           company: '',
           period: '',
           location: '',
           skills: [],
-          bullets: res.generatedAboutCard.bullets,
+          bullets: aboutBullets,
           isAiTailored: true,
           tailoredForRole: targetRoleName
         });
+      } else {
+        const overrideAbout = (res.tailoredCardOverrides || []).find(o => o.id === existingAboutCard.id);
+        if (overrideAbout && overrideAbout.tailoredBullets?.length > 0) {
+          generatedCustomCards.push({
+            ...existingAboutCard,
+            id: `ai-tailored-${existingAboutCard.id}-${Date.now()}`,
+            bullets: overrideAbout.tailoredBullets,
+            isAiTailored: true,
+            tailoredForRole: targetRoleName
+          });
+        }
       }
 
       // Store variant-specific AI tailored cards without altering Master Repository
       setWizardCustomTailoredCards(generatedCustomCards);
 
       const aiCardIds = generatedCustomCards.map(c => c.id);
-      const masterIdsToSelect = (res.selectedCardIds || []).filter(id => !generatedCustomCards.some(ac => ac.id.includes(id)));
 
       // Include education cards by default
       const eduCardIds = (parsedProfile?.experiences || [])
         .filter(e => (e.category || 'experience') === 'education')
         .map(e => e.id);
 
-      setWizardSelectedExpIds(new Set([...aiCardIds, ...masterIdsToSelect, ...eduCardIds]));
+      setWizardSelectedExpIds(new Set([...aiCardIds, ...eduCardIds]));
 
       if (res.suggestedSkills.length > 0) {
         setWizardExtraSkills(new Set(res.suggestedSkills));
