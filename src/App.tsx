@@ -1169,10 +1169,13 @@ export default function App() {
                           <div className="flex border-b border-slate-800 bg-slate-950/80 rounded-lg p-1 space-x-1 min-w-max">
                             {SECTION_ORDER.map((sec, idx) => {
                               const isCurrent = wizardCategoryIndex === idx;
-                              const catCards = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === sec);
+                              const masterCardsSec = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === sec);
+                              const customCardsSec = wizardCustomTailoredCards.filter(c => (c.category || 'experience') === sec);
+                              const unTailoredMasterSec = masterCardsSec.filter(m => !customCardsSec.some(a => a.id.includes(m.id)));
+                              const combinedCardsSec = [...customCardsSec, ...unTailoredMasterSec];
                               const selectedCount = sec === 'skills' 
                                 ? (autoFilledWizardSkills.length + wizardExtraSkills.size)
-                                : catCards.filter(c => wizardSelectedExpIds.has(c.id)).length;
+                                : combinedCardsSec.filter(c => wizardSelectedExpIds.has(c.id)).length;
 
                               return (
                                 <button
