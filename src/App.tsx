@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_MASTER_YAML, INITIAL_RESUMES, DEFAULT_JOB_TRACKER } from './mockData';
-import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord } from './types';
+import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord, AtsAnalysisDetails } from './types';
 import yaml from 'js-yaml';
 import { 
   Layers, 
@@ -210,6 +210,7 @@ export default function App() {
   }, [jobsList, currentUser]);
   const [jobDescription, setJobDescription] = useState('');
   const [viewingJobDescription, setViewingJobDescription] = useState<JobRecord | null>(null);
+  const [viewingAtsAnalysisJob, setViewingAtsAnalysisJob] = useState<JobRecord | null>(null);
   const [analyzingJobId, setAnalyzingJobId] = useState<string | null>(null);
 
   const runAtsJobMatchAnalysis = async (job: JobRecord) => {
@@ -228,13 +229,22 @@ export default function App() {
       }
 
       const analysis = await analyzeJobMatchWithGemini(job.description, candidateContext);
+      const updatedDetails: AtsAnalysisDetails = {
+        fitSummary: analysis.fitSummary,
+        matchedKeywords: analysis.matchedKeywords,
+        missingKeywords: analysis.missingKeywords,
+        strengths: analysis.strengths,
+        gaps: analysis.gaps
+      };
+
       setJobsList(prev => prev.map(j => {
         if (j.id !== job.id) return j;
         return {
           ...j,
           title: j.title === 'Tailored Target Role' || j.title === 'Target Role' || !j.title ? analysis.roleTitle : j.title,
           company: j.company === 'Target Enterprise' || j.company === 'Target Company' || !j.company ? analysis.companyName : j.company,
-          matchScore: analysis.matchScore
+          matchScore: analysis.matchScore,
+          atsAnalysisDetails: updatedDetails
         };
       }));
     } catch (e) {
@@ -2122,11 +2132,11 @@ export default function App() {
                                 {analyzingJobId === job.id ? (
                                   <div className="flex items-center space-x-2 text-xs text-indigo-400 font-mono">
                                     <span className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin"></span>
-                                    <span>Analyzing...</span>
+                                    <span>Analyzing Fit...</span>
                                   </div>
                                 ) : typeof job.matchScore === 'number' ? (
                                   <div className="flex items-center space-x-2">
-                                    <div className="w-20 bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div className="w-16 sm:w-20 bg-slate-800 h-2 rounded-full overflow-hidden shrink-0">
                                       <div
                                         className={`h-full rounded-full ${
                                           job.matchScore >= 80 ? 'bg-emerald-500' : job.matchScore >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -2137,11 +2147,11 @@ export default function App() {
                                     <span className="font-mono text-emerald-400 font-bold">{job.matchScore}%</span>
                                     <button
                                       type="button"
-                                      onClick={() => runAtsJobMatchAnalysis(job)}
-                                      className="text-slate-500 hover:text-indigo-400 text-xs p-1 ml-1"
-                                      title="Re-analyze ATS Match Score"
+                                      onClick={() => setViewingAtsAnalysisJob(job)}
+                                      className="p-1 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-400 hover:text-indigo-300 rounded transition shrink-0 ml-1"
+                                      title="Open Advanced ATS & LLM Fit Analysis Report"
                                     >
-                                      <Wand2 className="w-3 h-3" />
+                                      <FileText className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 ) : (
@@ -2507,6 +2517,141 @@ export default function App() {
                 className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg transition"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced ATS & LLM Fit Analysis Report Modal */}
+      {viewingAtsAnalysisJob && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-indigo-500/40 w-full max-w-2xl rounded-2xl shadow-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <h3 className="text-base sm:text-lg font-bold text-white">
+                    Advanced ATS & LLM Fit Analysis
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {viewingAtsAnalysisJob.title} • <span className="text-indigo-300">{viewingAtsAnalysisJob.company}</span>
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5 bg-indigo-950/80 border border-indigo-500/40 px-3 py-1.5 rounded-xl">
+                  <span className="text-xs text-slate-400 font-medium">ATS Match:</span>
+                  <span className="text-sm font-bold font-mono text-emerald-400">{viewingAtsAnalysisJob.matchScore}%</span>
+                </div>
+                <button
+                  onClick={() => setViewingAtsAnalysisJob(null)}
+                  className="text-slate-400 hover:text-slate-200 text-xs font-mono p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+              {/* Section 1: Executive LLM Fit Assessment */}
+              <div className="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-500/30 rounded-xl p-4 space-y-2">
+                <h4 className="font-bold text-indigo-300 uppercase tracking-wider flex items-center space-x-1.5 text-[11px]">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Executive LLM Fit Assessment</span>
+                </h4>
+                <p className="text-slate-200 leading-relaxed font-sans">
+                  {viewingAtsAnalysisJob.atsAnalysisDetails?.fitSummary ||
+                    'Candidate demonstrates strong core technical compatibility with the target job requirements.'}
+                </p>
+              </div>
+
+              {/* Section 2: Keywords Grid (Matched vs Missing) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Matched Keywords */}
+                <div className="bg-slate-950 p-4 rounded-xl border border-emerald-500/30 space-y-2">
+                  <h5 className="font-semibold text-emerald-400 flex items-center space-x-1.5 text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Matched ATS Keywords ({(viewingAtsAnalysisJob.atsAnalysisDetails?.matchedKeywords || []).length})</span>
+                  </h5>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(viewingAtsAnalysisJob.atsAnalysisDetails?.matchedKeywords || []).map((kw, i) => (
+                      <span key={i} className="bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 px-2 py-0.5 rounded text-[11px] font-mono flex items-center space-x-1">
+                        <span>✓</span>
+                        <span>{kw}</span>
+                      </span>
+                    ))}
+                    {(!viewingAtsAnalysisJob.atsAnalysisDetails?.matchedKeywords || viewingAtsAnalysisJob.atsAnalysisDetails.matchedKeywords.length === 0) && (
+                      <span className="text-slate-500 italic">None detected</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Missing Keywords */}
+                <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30 space-y-2">
+                  <h5 className="font-semibold text-amber-400 flex items-center space-x-1.5 text-[11px]">
+                    <Tag className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Missing ATS Keywords ({(viewingAtsAnalysisJob.atsAnalysisDetails?.missingKeywords || []).length})</span>
+                  </h5>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(viewingAtsAnalysisJob.atsAnalysisDetails?.missingKeywords || []).map((kw, i) => (
+                      <span key={i} className="bg-amber-950/80 text-amber-300 border border-amber-800/80 px-2 py-0.5 rounded text-[11px] font-mono flex items-center space-x-1">
+                        <span>⚠</span>
+                        <span>{kw}</span>
+                      </span>
+                    ))}
+                    {(!viewingAtsAnalysisJob.atsAnalysisDetails?.missingKeywords || viewingAtsAnalysisJob.atsAnalysisDetails.missingKeywords.length === 0) && (
+                      <span className="text-slate-500 italic text-[11px]">No major missing keywords</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Strengths & Gaps */}
+              {(viewingAtsAnalysisJob.atsAnalysisDetails?.strengths?.length || 0) > 0 && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <h5 className="font-semibold text-slate-200 text-[11px] uppercase tracking-wider">Candidate Strengths</h5>
+                  <ul className="space-y-1 text-slate-300 list-disc list-inside">
+                    {viewingAtsAnalysisJob.atsAnalysisDetails?.strengths?.map((str, i) => (
+                      <li key={i}>{str}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(viewingAtsAnalysisJob.atsAnalysisDetails?.gaps?.length || 0) > 0 && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <h5 className="font-semibold text-slate-200 text-[11px] uppercase tracking-wider">Potential Gaps & Recommendations</h5>
+                  <ul className="space-y-1 text-slate-300 list-disc list-inside">
+                    {viewingAtsAnalysisJob.atsAnalysisDetails?.gaps?.map((gap, i) => (
+                      <li key={i}>{gap}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center border-t border-slate-800 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetJob = viewingAtsAnalysisJob;
+                  setViewingAtsAnalysisJob(null);
+                  runAtsJobMatchAnalysis(targetJob);
+                }}
+                className="flex items-center space-x-1.5 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+              >
+                <Wand2 className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Re-run ATS Analysis</span>
+              </button>
+              <button
+                onClick={() => setViewingAtsAnalysisJob(null)}
+                className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg transition"
+              >
+                Close Report
               </button>
             </div>
           </div>

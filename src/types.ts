@@ -49,6 +49,14 @@ export interface ChatMessage {
   attachedFile?: string;
 }
 
+export interface AtsAnalysisDetails {
+  fitSummary: string;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  strengths?: string[];
+  gaps?: string[];
+}
+
 export interface JobRecord {
   id: string;
   company: string;
@@ -59,6 +67,7 @@ export interface JobRecord {
   description?: string;
   resumeId?: string;
   resumeTitle?: string;
+  atsAnalysisDetails?: AtsAnalysisDetails;
 }
 
 
