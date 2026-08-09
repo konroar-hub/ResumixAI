@@ -23,6 +23,7 @@ export interface ResumeItem {
   id: string;
   title: string;
   targetRole: string;
+  company?: string;
   updatedAt: string;
   selectedExpIds: string[];
   selectedSkills?: string[];

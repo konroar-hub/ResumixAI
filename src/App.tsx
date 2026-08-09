@@ -238,8 +238,46 @@ export default function App() {
     target: 'master' | 'resume';
     resumeId?: string;
     card: ExperienceItem;
-    isNew: boolean;
+    isNew?: boolean;
   } | null>(null);
+
+  // Edit Resume Variant Modal State
+  const [editingResume, setEditingResume] = useState<ResumeItem | null>(null);
+  const [editResumeTitle, setEditResumeTitle] = useState('');
+  const [editResumeRole, setEditResumeRole] = useState('');
+  const [editResumeCompany, setEditResumeCompany] = useState('');
+  const [editResumeSelectedExpIds, setEditResumeSelectedExpIds] = useState<Set<string>>(new Set());
+  const [editResumeSkills, setEditResumeSkills] = useState<string[]>([]);
+  const [editResumeNewSkillInput, setEditResumeNewSkillInput] = useState('');
+
+  const openEditResumeModal = (resume: ResumeItem) => {
+    setEditingResume(resume);
+    setEditResumeTitle(resume.title);
+    setEditResumeRole(resume.targetRole);
+    setEditResumeCompany(resume.company || '');
+    setEditResumeSelectedExpIds(new Set(resume.selectedExpIds));
+    setEditResumeSkills(resume.selectedSkills || []);
+  };
+
+  const saveEditResumeModal = () => {
+    if (!editingResume) return;
+    const updatedResumes = resumes.map(r => {
+      if (r.id !== editingResume.id) return r;
+      return {
+        ...r,
+        title: editResumeTitle.trim() || r.title,
+        targetRole: editResumeRole.trim(),
+        company: editResumeCompany.trim(),
+        selectedExpIds: Array.from(editResumeSelectedExpIds),
+        selectedSkills: editResumeSkills
+      };
+    });
+    setResumes(updatedResumes);
+    if (currentUser?.uid) {
+      saveUserDataToFirestore(currentUser.uid, { resumes: updatedResumes });
+    }
+    setEditingResume(null);
+  };
 
   const [cardFormCategory, setCardFormCategory] = useState<CardCategory>('experience');
   const [cardFormTitle, setCardFormTitle] = useState('');
@@ -773,15 +811,22 @@ export default function App() {
 
   // Stage 2 category cards validation
   const currentCategory = SECTION_ORDER[wizardCategoryIndex];
-  const currentCategoryCards = (parsedProfile?.experiences || []).filter(
+  const masterCardsCurrentCat = (parsedProfile?.experiences || []).filter(
     e => (e.category || 'experience') === currentCategory
   );
-  const currentCategorySelectedCount = currentCategoryCards.filter(c => wizardSelectedExpIds.has(c.id)).length;
-  
+  const aiCardsCurrentCat = wizardCustomTailoredCards.filter(
+    c => (c.category || 'experience') === currentCategory
+  );
+  const unTailoredMasterCurrentCat = masterCardsCurrentCat.filter(
+    m => !aiCardsCurrentCat.some(a => a.id.includes(m.id))
+  );
+  const combinedCategoryCardsCurrentCat = [...aiCardsCurrentCat, ...unTailoredMasterCurrentCat];
+  const currentCategorySelectedCount = combinedCategoryCardsCurrentCat.filter(c => wizardSelectedExpIds.has(c.id)).length;
+
   // Validation: For about, experience, project, education allow proceeding if selected or section empty
   const canProceedCurrentCategory = currentCategory === 'skills'
     ? true
-    : currentCategoryCards.length === 0 || currentCategorySelectedCount > 0;
+    : combinedCategoryCardsCurrentCat.length === 0 || currentCategorySelectedCount > 0;
 
   if (isAuthLoading) {
     return (
@@ -1215,7 +1260,7 @@ export default function App() {
                         ) : (
                           /* Cards List for Standard Wizard Category */
                           <div className="space-y-2.5 max-h-80 overflow-y-auto">
-                            {currentCategoryCards.length === 0 ? (
+                            {combinedCategoryCardsCurrentCat.length === 0 ? (
                               <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 text-center space-y-3">
                                 <p className="text-xs text-slate-400">
                                   No <strong className="capitalize">{currentCategory}</strong> entries found in your master experience repository.
@@ -1416,18 +1461,31 @@ export default function App() {
                               <span className="bg-slate-800 text-indigo-300 px-2 py-0.5 rounded text-[11px] font-medium truncate">
                                 {r.targetRole}
                               </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveResumeId(r.id);
-                                  setTimeout(() => window.print(), 100);
-                                }}
-                                className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold shrink-0"
-                                title="Export Resume as PDF"
-                              >
-                                <Download className="w-3 h-3" />
-                                <span>Export PDF</span>
-                              </button>
+                              <div className="flex items-center space-x-1.5 shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditResumeModal(r);
+                                  }}
+                                  className="flex items-center space-x-1 text-[11px] bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 rounded transition font-semibold"
+                                  title="Edit Resume Variant"
+                                >
+                                  <Edit3 className="w-3 h-3 text-indigo-400" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveResumeId(r.id);
+                                    setTimeout(() => window.print(), 100);
+                                  }}
+                                  className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold"
+                                  title="Export Resume as PDF"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  <span>PDF</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1475,16 +1533,6 @@ export default function App() {
                       <p className="text-xs font-semibold text-slate-700 mt-0.5">{activeResume?.targetRole || parsedProfile.title}</p>
                       <p className="text-[11px] text-slate-600 mt-0.5">
                         {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
-                      </p>
-                    </div>
-
-                    {/* Summary */}
-                    <div>
-                      <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-900 border-b border-slate-300 pb-0.5 mb-1.5">
-                        Professional Summary
-                      </h2>
-                      <p className="text-[11px] text-slate-800 leading-relaxed">
-                        {parsedProfile.summary}
                       </p>
                     </div>
 
@@ -2158,6 +2206,162 @@ export default function App() {
                 className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow transition"
               >
                 Save Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Resume Variant Modal */}
+      {editingResume && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-xl shadow-2xl p-6 space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <Edit3 className="w-5 h-5 text-indigo-400" />
+                <span>Edit Resume Variant — {editingResume.title}</span>
+              </h3>
+              <button
+                onClick={() => setEditingResume(null)}
+                className="text-slate-400 hover:text-slate-200 text-xs font-mono"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Resume Title</label>
+                  <input
+                    type="text"
+                    value={editResumeTitle}
+                    onChange={(e) => setEditResumeTitle(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Role</label>
+                  <input
+                    type="text"
+                    value={editResumeRole}
+                    onChange={(e) => setEditResumeRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Company</label>
+                  <input
+                    type="text"
+                    value={editResumeCompany}
+                    onChange={(e) => setEditResumeCompany(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Selected Cards Checklist */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-medium text-slate-400">Included Cards in Resume Variant</label>
+                <div className="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-56 overflow-y-auto">
+                  {(['about', 'experience', 'project', 'education'] as const).map(cat => {
+                    const masterCards = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === cat);
+                    const customCards = (editingResume.customExperiences || []).filter(c => (c.category || 'experience') === cat);
+                    const unTailored = masterCards.filter(m => !customCards.some(c => c.id.includes(m.id)));
+                    const combined = [...customCards, ...unTailored];
+                    if (combined.length === 0) return null;
+
+                    return (
+                      <div key={cat} className="space-y-1.5">
+                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1 capitalize">
+                          {cat} Cards
+                        </h5>
+                        <div className="space-y-1">
+                          {combined.map(card => {
+                            const isChecked = editResumeSelectedExpIds.has(card.id);
+                            return (
+                              <label key={card.id} className="flex items-center space-x-2 text-xs text-slate-200 cursor-pointer hover:bg-slate-900 p-1.5 rounded transition">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setEditResumeSelectedExpIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(card.id)) next.delete(card.id);
+                                      else next.add(card.id);
+                                      return next;
+                                    });
+                                  }}
+                                  className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="font-semibold text-slate-100">{card.title}</span>
+                                {card.isAiTailored && (
+                                  <span className="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded font-mono">
+                                    ✨ AI Tailored
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Skills Editor */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-medium text-slate-400">Variant Skills</label>
+                <div className="flex flex-wrap gap-1.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  {editResumeSkills.map((sk, idx) => (
+                    <span key={idx} className="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-md font-mono flex items-center space-x-1">
+                      <span>{sk}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditResumeSkills(editResumeSkills.filter((_, i) => i !== idx))}
+                        className="text-indigo-400 hover:text-rose-400 text-xs ml-1"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  <div className="flex items-center space-x-1.5 mt-1 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      value={editResumeNewSkillInput}
+                      onChange={(e) => setEditResumeNewSkillInput(e.target.value)}
+                      placeholder="Add skill..."
+                      className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!editResumeNewSkillInput.trim()) return;
+                        setEditResumeSkills([...editResumeSkills, editResumeNewSkillInput.trim()]);
+                        setEditResumeNewSkillInput('');
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-2.5 py-1 rounded transition"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 border-t border-slate-800 pt-3">
+              <button
+                onClick={() => setEditingResume(null)}
+                className="px-3.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditResumeModal}
+                className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow transition"
+              >
+                Save Resume Variant
               </button>
             </div>
           </div>
