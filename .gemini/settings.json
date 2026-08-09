@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "bravas": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\Konstantin Victoria\\AppData\\Local\\npm-cache\\_npx\\30418de6b6610002\\node_modules\\bravas-agent\\dist\\mcp-stdio.js"
+      ],
+      "env": {
+        "BRAVAS_AGENT_URL": "http://127.0.0.1:3001",
+        "BRAVAS_SESSION_ID": "4cb57a56-36f4-4763-bd50-8a3a221d19db",
+        "BRAVAS_SESSION_TOKEN": "670413dff16a8c80bba201d183d0c584"
+      }
+    },
+    "Roblox_Studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat"
+      ]
+    }
+  }
+}
