@@ -816,7 +816,7 @@ export default function App() {
           title: newResumeRole.trim() || 'Role',
           dateAdded: new Date().toISOString().split('T')[0],
           status: 'Draft',
-          matchScore: 92,
+          description: stage1JobPostingText.trim(),
           resumeId: newRes.id,
           resumeTitle: newRes.title
         };
@@ -2010,9 +2010,8 @@ export default function App() {
                           title: analysis.roleTitle,
                           company: analysis.companyName,
                           dateAdded: new Date().toISOString().split('T')[0],
-                          status: 'Applied',
-                          description: jobDescription.trim(),
-                          matchScore: analysis.matchScore
+                          status: 'Draft',
+                          description: jobDescription.trim()
                         };
                         setJobsList(prev => [newRecord, ...prev]);
                         setJobDescription('');
