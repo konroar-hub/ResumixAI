@@ -29,7 +29,8 @@ import {
   Home,
   Globe,
   User as UserIcon,
-  LogOut
+  LogOut,
+  Zap
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
 import {
@@ -235,48 +236,26 @@ export default function App() {
 
   // Card Creation & Editing state
   const [editingCard, setEditingCard] = useState<{
-    target: 'master' | 'resume';
+    target: 'master' | 'resume' | 'wizard';
     resumeId?: string;
     card: ExperienceItem;
     isNew?: boolean;
   } | null>(null);
 
-  // Edit Resume Variant Modal State
-  const [editingResume, setEditingResume] = useState<ResumeItem | null>(null);
-  const [editResumeTitle, setEditResumeTitle] = useState('');
-  const [editResumeRole, setEditResumeRole] = useState('');
-  const [editResumeCompany, setEditResumeCompany] = useState('');
-  const [editResumeSelectedExpIds, setEditResumeSelectedExpIds] = useState<Set<string>>(new Set());
-  const [editResumeSkills, setEditResumeSkills] = useState<string[]>([]);
-  const [editResumeNewSkillInput, setEditResumeNewSkillInput] = useState('');
+  // Resume editing state
+  const [editingResumeId, setEditingResumeId] = useState<string | null>(null);
 
-  const openEditResumeModal = (resume: ResumeItem) => {
-    setEditingResume(resume);
-    setEditResumeTitle(resume.title);
-    setEditResumeRole(resume.targetRole);
-    setEditResumeCompany(resume.company || '');
-    setEditResumeSelectedExpIds(new Set(resume.selectedExpIds));
-    setEditResumeSkills(resume.selectedSkills || []);
-  };
-
-  const saveEditResumeModal = () => {
-    if (!editingResume) return;
-    const updatedResumes = resumes.map(r => {
-      if (r.id !== editingResume.id) return r;
-      return {
-        ...r,
-        title: editResumeTitle.trim() || r.title,
-        targetRole: editResumeRole.trim(),
-        company: editResumeCompany.trim(),
-        selectedExpIds: Array.from(editResumeSelectedExpIds),
-        selectedSkills: editResumeSkills
-      };
-    });
-    setResumes(updatedResumes);
-    if (currentUser?.uid) {
-      saveUserDataToFirestore(currentUser.uid, { resumes: updatedResumes });
-    }
-    setEditingResume(null);
+  const openEditResumeWizard = (resume: ResumeItem) => {
+    setEditingResumeId(resume.id);
+    setNewResumeTitle(resume.title);
+    setNewResumeRole(resume.targetRole);
+    setStage1CompanyName(resume.company || '');
+    setWizardCustomTailoredCards(resume.customExperiences || []);
+    setWizardSelectedExpIds(new Set(resume.selectedExpIds));
+    setWizardExtraSkills(new Set(resume.selectedSkills || []));
+    setCreateResumeStage(2);
+    setWizardCategoryIndex(0);
+    setIsCreatingResume(true);
   };
 
   const [cardFormCategory, setCardFormCategory] = useState<CardCategory>('experience');
@@ -447,7 +426,7 @@ export default function App() {
   }, [parsedProfile, wizardSelectedExpIds]);
 
   const openCardEditor = (
-    target: 'master' | 'resume',
+    target: 'master' | 'resume' | 'wizard',
     card?: ExperienceItem,
     resumeId?: string,
     defaultCategory: CardCategory = 'experience'
@@ -598,11 +577,42 @@ export default function App() {
       } else {
         updateExperienceCard(cardPayload.id, cardPayload);
       }
+    } else if (editingCard.target === 'wizard') {
+      const isExistingWizardCard = wizardCustomTailoredCards.some(c => c.id === editingCard.card.id);
+      if (isExistingWizardCard) {
+        setWizardCustomTailoredCards(prev => prev.map(c => {
+          if (c.id !== editingCard.card.id) return c;
+          return {
+            ...cardPayload,
+            isDeviatedFromMaster: true
+          };
+        }));
+      } else {
+        // Editing a Master Card inside Resume Variant Wizard -> Create Resume-Specific Custom Card!
+        const customCardId = `wizard-custom-${editingCard.card.id}-${Date.now()}`;
+        const newVariantCard: ExperienceItem = {
+          ...cardPayload,
+          id: customCardId,
+          isDeviatedFromMaster: true,
+          tailoredForRole: newResumeRole || 'Target Role'
+        };
+
+        setWizardCustomTailoredCards(prev => [newVariantCard, ...prev]);
+        setWizardSelectedExpIds(prev => {
+          const next = new Set(prev);
+          next.delete(editingCard.card.id); // Unselect master card
+          next.add(customCardId); // Select variant-specific edited card
+          return next;
+        });
+      }
     } else if (editingCard.target === 'resume' && editingCard.resumeId) {
       if (editingCard.isNew) {
         addCustomResumeCard(editingCard.resumeId, cardPayload);
       } else {
-        updateCustomResumeCard(editingCard.resumeId, cardPayload.id, cardPayload);
+        updateCustomResumeCard(editingCard.resumeId, editingCard.card.id, {
+          ...cardPayload,
+          isDeviatedFromMaster: true
+        });
       }
     }
 
@@ -628,6 +638,7 @@ export default function App() {
   };
 
   const startCreateResumeWizard = () => {
+    setEditingResumeId(null);
     setNewResumeTitle('');
     setNewResumeRole('');
     setShowStage1Company(false);
@@ -721,34 +732,65 @@ export default function App() {
       ...Array.from(wizardExtraSkills)
     ]));
 
-    const newRes: ResumeItem = {
-      id: `res-${Date.now()}`,
-      title: newResumeTitle,
-      targetRole: newResumeRole || stage1CompanyName || 'Role',
-      updatedAt: new Date().toISOString().split('T')[0],
-      selectedExpIds: Array.from(wizardSelectedExpIds).filter(id => !id.startsWith('ai-tailored-')),
-      selectedSkills: finalSkillsList,
-      customExperiences: wizardCustomTailoredCards.filter(c => wizardSelectedExpIds.has(c.id))
-    };
+    const selectedCustomExps = wizardCustomTailoredCards.filter(c => wizardSelectedExpIds.has(c.id));
 
-    setResumes(prev => [newRes, ...prev]);
-    setActiveResumeId(newRes.id);
-
-    // If Add Job Posting was expanded / info provided, automatically add new entry to Job Tracker
-    if (showStage1Company || stage1CompanyName.trim() || stage1JobPostingText.trim()) {
-      const newJob: JobRecord = {
-        id: `job-${Date.now()}`,
-        company: stage1CompanyName.trim() || 'Target Company',
-        title: newResumeRole.trim() || 'Role',
-        dateAdded: new Date().toISOString().split('T')[0],
-        status: 'Draft',
-        matchScore: 92,
-        resumeId: newRes.id,
-        resumeTitle: newRes.title
+    if (editingResumeId) {
+      // Save changes to existing resume variant
+      const updatedResumes = resumes.map(r => {
+        if (r.id !== editingResumeId) return r;
+        return {
+          ...r,
+          title: newResumeTitle,
+          targetRole: newResumeRole || stage1CompanyName || r.targetRole,
+          company: stage1CompanyName || r.company,
+          updatedAt: new Date().toISOString().split('T')[0],
+          selectedExpIds: Array.from(wizardSelectedExpIds),
+          selectedSkills: finalSkillsList,
+          customExperiences: selectedCustomExps
+        };
+      });
+      setResumes(updatedResumes);
+      if (currentUser?.uid) {
+        saveUserDataToFirestore(currentUser.uid, { resumes: updatedResumes });
+      }
+      setActiveResumeId(editingResumeId);
+    } else {
+      // Create brand new resume variant
+      const newRes: ResumeItem = {
+        id: `res-${Date.now()}`,
+        title: newResumeTitle,
+        targetRole: newResumeRole || stage1CompanyName || 'Role',
+        company: stage1CompanyName || '',
+        updatedAt: new Date().toISOString().split('T')[0],
+        selectedExpIds: Array.from(wizardSelectedExpIds),
+        selectedSkills: finalSkillsList,
+        customExperiences: selectedCustomExps
       };
-      setJobsList(prev => [newJob, ...prev]);
+
+      const updatedResumes = [newRes, ...resumes];
+      setResumes(updatedResumes);
+      setActiveResumeId(newRes.id);
+
+      if (currentUser?.uid) {
+        saveUserDataToFirestore(currentUser.uid, { resumes: updatedResumes });
+      }
+
+      if (showStage1Company || stage1CompanyName.trim() || stage1JobPostingText.trim()) {
+        const newJob: JobRecord = {
+          id: `job-${Date.now()}`,
+          company: stage1CompanyName.trim() || 'Target Company',
+          title: newResumeRole.trim() || 'Role',
+          dateAdded: new Date().toISOString().split('T')[0],
+          status: 'Draft',
+          matchScore: 92,
+          resumeId: newRes.id,
+          resumeTitle: newRes.title
+        };
+        setJobsList(prev => [newJob, ...prev]);
+      }
     }
 
+    setEditingResumeId(null);
     setIsCreatingResume(false);
   };
 
@@ -1465,7 +1507,7 @@ export default function App() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    openEditResumeModal(r);
+                                    openEditResumeWizard(r);
                                   }}
                                   className="flex items-center space-x-1 text-[11px] bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 rounded transition font-semibold"
                                   title="Edit Resume Variant"
@@ -2228,161 +2270,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Edit Resume Variant Modal */}
-      {editingResume && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-xl shadow-2xl p-6 space-y-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                <Edit3 className="w-5 h-5 text-indigo-400" />
-                <span>Edit Resume Variant — {editingResume.title}</span>
-              </h3>
-              <button
-                onClick={() => setEditingResume(null)}
-                className="text-slate-400 hover:text-slate-200 text-xs font-mono"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Resume Title</label>
-                  <input
-                    type="text"
-                    value={editResumeTitle}
-                    onChange={(e) => setEditResumeTitle(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Role</label>
-                  <input
-                    type="text"
-                    value={editResumeRole}
-                    onChange={(e) => setEditResumeRole(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Company</label>
-                  <input
-                    type="text"
-                    value={editResumeCompany}
-                    onChange={(e) => setEditResumeCompany(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Selected Cards Checklist */}
-              <div className="space-y-2">
-                <label className="block text-[11px] font-medium text-slate-400">Included Cards in Resume Variant</label>
-                <div className="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-56 overflow-y-auto">
-                  {(['about', 'experience', 'project', 'education'] as const).map(cat => {
-                    const masterCards = (parsedProfile?.experiences || []).filter(e => (e.category || 'experience') === cat);
-                    const customCards = (editingResume.customExperiences || []).filter(c => (c.category || 'experience') === cat);
-                    const unTailored = masterCards.filter(m => !customCards.some(c => c.id.includes(m.id)));
-                    const combined = [...customCards, ...unTailored];
-                    if (combined.length === 0) return null;
-
-                    return (
-                      <div key={cat} className="space-y-1.5">
-                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1 capitalize">
-                          {cat} Cards
-                        </h5>
-                        <div className="space-y-1">
-                          {combined.map(card => {
-                            const isChecked = editResumeSelectedExpIds.has(card.id);
-                            return (
-                              <label key={card.id} className="flex items-center space-x-2 text-xs text-slate-200 cursor-pointer hover:bg-slate-900 p-1.5 rounded transition">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {
-                                    setEditResumeSelectedExpIds(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(card.id)) next.delete(card.id);
-                                      else next.add(card.id);
-                                      return next;
-                                    });
-                                  }}
-                                  className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="font-semibold text-slate-100">{card.title}</span>
-                                {card.isAiTailored && (
-                                  <span className="text-[9px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded font-mono">
-                                    ✨ AI Tailored
-                                  </span>
-                                )}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Skills Editor */}
-              <div className="space-y-2">
-                <label className="block text-[11px] font-medium text-slate-400">Variant Skills</label>
-                <div className="flex flex-wrap gap-1.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                  {editResumeSkills.map((sk, idx) => (
-                    <span key={idx} className="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-2.5 py-1 rounded-md font-mono flex items-center space-x-1">
-                      <span>{sk}</span>
-                      <button
-                        type="button"
-                        onClick={() => setEditResumeSkills(editResumeSkills.filter((_, i) => i !== idx))}
-                        className="text-indigo-400 hover:text-rose-400 text-xs ml-1"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
-                  <div className="flex items-center space-x-1.5 mt-1 w-full sm:w-auto">
-                    <input
-                      type="text"
-                      value={editResumeNewSkillInput}
-                      onChange={(e) => setEditResumeNewSkillInput(e.target.value)}
-                      placeholder="Add skill..."
-                      className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!editResumeNewSkillInput.trim()) return;
-                        setEditResumeSkills([...editResumeSkills, editResumeNewSkillInput.trim()]);
-                        setEditResumeNewSkillInput('');
-                      }}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-2.5 py-1 rounded transition"
-                    >
-                      + Add
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 border-t border-slate-800 pt-3">
-              <button
-                onClick={() => setEditingResume(null)}
-                className="px-3.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveEditResumeModal}
-                className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow transition"
-              >
-                Save Resume Variant
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Paste YAML Import & Prompt Modal */}
       {isPasteYamlOpen && (

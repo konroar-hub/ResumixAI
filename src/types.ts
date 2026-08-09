@@ -17,6 +17,7 @@ export interface ExperienceItem {
   selected?: boolean;
   isAiTailored?: boolean;
   tailoredForRole?: string;
+  isDeviatedFromMaster?: boolean;
 }
 
 export interface ResumeItem {
