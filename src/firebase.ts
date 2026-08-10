@@ -16,8 +16,17 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { MasterProfile, ResumeItem, JobRecord, ResumeStyle } from './types';
 
+const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-app';
-const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (projectId !== 'demo-app' ? `${projectId}.firebaseapp.com` : 'demo-app.firebaseapp.com');
+const defaultAuthDomain = projectId !== 'demo-app' ? `${projectId}.firebaseapp.com` : 'demo-app.firebaseapp.com';
+
+// Enable same-origin auth domain on Vercel deployments to bypass 3rd-party cookie blocking
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (
+  currentHostname && currentHostname.includes('vercel.app') 
+    ? currentHostname 
+    : defaultAuthDomain
+);
+
 const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (projectId !== 'demo-app' ? `${projectId}.appspot.com` : 'demo-app.appspot.com');
 
 const firebaseConfig = {
