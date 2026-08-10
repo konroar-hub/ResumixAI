@@ -24,6 +24,7 @@ import {
   Copy,
   FileText,
   Download,
+  Printer,
   Menu,
   X,
   Home,
@@ -342,6 +343,7 @@ export default function App() {
     }
 
     setIsGeneratingPdf(true);
+    let styleTag: HTMLStyleElement | null = null;
     try {
       await new Promise(r => setTimeout(r, 150));
 
@@ -350,6 +352,18 @@ export default function App() {
         window.print();
         return;
       }
+
+      // Inject temporary CSS override to fix html2canvas letter-spacing / word-spacing bug
+      styleTag = document.createElement('style');
+      styleTag.id = 'pdf-clean-spacing-override';
+      styleTag.innerHTML = `
+        #resume-document-pdf-area,
+        #resume-document-pdf-area * {
+          letter-spacing: normal !important;
+          word-spacing: normal !important;
+        }
+      `;
+      document.head.appendChild(styleTag);
 
       const candidateName = parsedProfile.name
         ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
@@ -363,16 +377,17 @@ export default function App() {
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
       const opt = {
-        margin: 0.25,
+        margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
         filename: filename,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: {
           scale: 2,
           useCORS: true,
           logging: false,
-          windowWidth: 850
+          windowWidth: 800
         },
-        jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
+        jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
       await html2pdf().set(opt).from(element).save();
@@ -380,6 +395,9 @@ export default function App() {
       console.error('Client-side PDF generation error:', err);
       window.print();
     } finally {
+      if (styleTag && styleTag.parentNode) {
+        styleTag.parentNode.removeChild(styleTag);
+      }
       setIsGeneratingPdf(false);
     }
   };
@@ -2142,15 +2160,27 @@ export default function App() {
                         {activeResume ? activeResume.title : 'No Resume Selected'}
                       </span>
                       {activeResume && (
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadPdf(activeResume)}
-                          disabled={isGeneratingPdf}
-                          className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-md transition disabled:opacity-50"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF File'}</span>
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadPdf(activeResume)}
+                            disabled={isGeneratingPdf}
+                            className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-md transition disabled:opacity-50"
+                            title="Direct PDF File Download"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>{isGeneratingPdf ? 'Compiling PDF...' : 'Download PDF File'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => window.print()}
+                            className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 py-1 rounded-lg transition"
+                            title="Vector ATS Print to PDF"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Vector Print PDF</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
