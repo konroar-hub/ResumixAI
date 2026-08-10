@@ -2571,16 +2571,21 @@ export default function App() {
                           const totalItems = [...customItems, ...unTailoredItems];
                           if (totalItems.length === 0) return null;
 
+                          const secStr = String(sec);
+                          const sectionTitle = secStr === 'experience' ? 'EXPERIENCE' : secStr === 'project' ? 'PROJECTS' : secStr === 'education' ? 'EDUCATION' : secStr.toUpperCase();
+
                           return (
                             <div key={sec} className="space-y-2">
                               <h2 
-                                className="text-[13px] font-bold uppercase tracking-wider leading-none pt-2 pb-1.5 capitalize"
+                                className="text-[13px] font-bold uppercase tracking-wider leading-none pt-2 pb-1.5"
                                 style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
-                                {sec}
+                                {sectionTitle}
                               </h2>
                               <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {totalItems.map(exp => {
+                                const hasCompany = exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
                                 return (
                                       <div key={exp.id} className={`w-full pdf-card-block mb-3.5 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
                                         <div className="text-[11.5px] leading-snug">
@@ -2593,14 +2598,16 @@ export default function App() {
                                              </span>
                                            )}
                                          </div>
-                                         {(exp.company || exp.location) && (
+                                         {(hasCompany || hasLocation) && (
                                            <div className="text-[10.5px] leading-snug opacity-90">
-                                             <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
-                                               {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
-                                             </span>
-                                             {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                               <span className="opacity-75 pl-2" style={{ color: activeStyle.theme.textColor }}>
-                                                 • {exp.location}
+                                             {hasCompany && (
+                                               <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                                 {exp.company}
+                                               </span>
+                                             )}
+                                             {hasLocation && (
+                                               <span className={`opacity-75 ${hasCompany ? 'pl-2' : ''}`} style={{ color: activeStyle.theme.textColor }}>
+                                                 {hasCompany ? '• ' : ''}{exp.location}
                                                </span>
                                              )}
                                            </div>
