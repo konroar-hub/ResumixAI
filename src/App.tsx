@@ -458,10 +458,14 @@ export default function App() {
       const parentRect = rootEl.getBoundingClientRect();
       const page1HeightPx = Math.floor((elementWidth * 11) / 8.5);
 
+      const itemsToEmbed: { text: string; xInches: number; yInches: number; fontSizePt: number; domIndex: number }[] = [];
+
       const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
       let node: Node | null;
+      let domCounter = 0;
 
       while ((node = walker.nextNode())) {
+        domCounter++;
         const parentEl = node.parentElement;
         if (!parentEl) continue;
 
@@ -475,9 +479,9 @@ export default function App() {
         const rects = range.getClientRects();
 
         if (rects.length > 0) {
-          const rect = rects[0];
-          const relTopPx = rect.top - parentRect.top;
-          const relLeftPx = rect.left - parentRect.left;
+          const textRect = rects[0];
+          const relTopPx = textRect.top - parentRect.top;
+          const relLeftPx = textRect.left - parentRect.left;
 
           if (relTopPx >= pageOffsetPx - 10 && relTopPx < (pageOffsetPx + page1HeightPx)) {
             const computedStyle = window.getComputedStyle(parentEl);
@@ -487,14 +491,31 @@ export default function App() {
             const xInches = Math.max(0.25, (relLeftPx * 8.5) / elementWidth);
             const yInches = Math.max(0.35, (((relTopPx - pageOffsetPx) * 11) / page1HeightPx) + (fontSizePt / 72));
 
-            try {
-              pdf.setFontSize(fontSizePt);
-              pdf.setTextColor(0, 0, 0);
-              pdf.text(text, xInches, yInches);
-            } catch (err) {}
+            itemsToEmbed.push({ text, xInches, yInches, fontSizePt, domIndex: domCounter });
           }
         }
       }
+
+      // Stable Quantized Line-Band Sorting: Group by discrete 0.15in line bands, then preserve DOM reading order
+      itemsToEmbed.sort((a, b) => {
+        const lineA = Math.floor(a.yInches / 0.15);
+        const lineB = Math.floor(b.yInches / 0.15);
+
+        if (lineA !== lineB) {
+          return lineA - lineB; // Strict top-to-bottom line band order
+        }
+        return a.domIndex - b.domIndex; // Preserve DOM reading order within the same line band
+      });
+
+      // Set PDF Text Rendering Mode 3 (Invisible Text) and write elements sequentially in exact reading order
+      (pdf as any).internal.write('3 Tr');
+      for (const item of itemsToEmbed) {
+        try {
+          pdf.setFontSize(item.fontSizePt);
+          pdf.text(item.text, item.xInches, item.yInches);
+        } catch (err) {}
+      }
+      (pdf as any).internal.write('0 Tr');
     } catch (e) {
       console.error('Error embedding selectable text layer in PDF:', e);
     }
@@ -546,13 +567,13 @@ export default function App() {
           const isHeader = htmlEl.tagName === 'H2' || htmlEl.tagName === 'H3' || htmlEl.classList.contains('pdf-section-header');
 
           if (isHeader) {
-            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 50)) {
+            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 60)) {
               if (!breakTarget || getElementOffsetTop(breakTarget, element) > itemTop) {
                 breakTarget = htmlEl;
               }
             }
           } else {
-            if (itemTop < page1HeightPx && itemBottom > page1HeightPx) {
+            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 20)) {
               let target = htmlEl;
               const prev = htmlEl.previousElementSibling as HTMLElement;
               if (prev && (prev.tagName === 'H2' || prev.tagName === 'H3' || prev.classList.contains('pdf-section-header'))) {
@@ -2040,7 +2061,7 @@ export default function App() {
                                 {isLlmGenerating ? (
                                   <>
                                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                    <span>Analyzing & Rewriting Cards with Gemini 2.5 Flash...</span>
+                                    <span>Analyzing & Rewriting Cards with Spark AI...</span>
                                   </>
                                 ) : (
                                   <>
@@ -2146,31 +2167,37 @@ export default function App() {
                               </div>
 
                               <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-1">
-                                {masterSkillsBank.map(({ skillName }) => {
-                                  const isAuto = autoFilledWizardSkills.includes(skillName);
-                                  const isExtra = wizardExtraSkills.has(skillName);
-                                  const isSelected = isAuto || isExtra;
+                                {(() => {
+                                  const masterNames = masterSkillsBank.map(s => s.skillName);
+                                  const extraNames = Array.from(wizardExtraSkills);
+                                  const combinedNames = Array.from(new Set([...masterNames, ...extraNames]));
 
-                                  return (
-                                    <button
-                                      key={skillName}
-                                      type="button"
-                                      disabled={isAuto}
-                                      onClick={() => toggleWizardExtraSkill(skillName)}
-                                      className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition flex items-center space-x-1.5 ${
-                                        isAuto
-                                          ? 'bg-slate-900 border-slate-700 text-slate-400 opacity-60 cursor-not-allowed'
-                                          : isExtra
-                                          ? 'bg-cyan-950 text-cyan-300 border-cyan-500 shadow-md font-bold'
-                                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
-                                      }`}
-                                    >
-                                      <span>{isSelected ? '✓' : '+'}</span>
-                                      <span>{skillName}</span>
-                                      {isAuto && <span className="text-[9px] bg-slate-800 text-slate-400 px-1 rounded">Auto</span>}
-                                    </button>
-                                  );
-                                })}
+                                  return combinedNames.map(skillName => {
+                                    const isAuto = autoFilledWizardSkills.includes(skillName);
+                                    const isExtra = wizardExtraSkills.has(skillName);
+                                    const isSelected = isAuto || isExtra;
+
+                                    return (
+                                      <button
+                                        key={skillName}
+                                        type="button"
+                                        disabled={isAuto}
+                                        onClick={() => toggleWizardExtraSkill(skillName)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition flex items-center space-x-1.5 ${
+                                          isAuto
+                                            ? 'bg-slate-900 border-slate-700 text-slate-400 opacity-60 cursor-not-allowed'
+                                            : isExtra
+                                            ? 'bg-cyan-950 text-cyan-300 border-cyan-500 shadow-md font-bold'
+                                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                                        }`}
+                                      >
+                                        <span>{isSelected ? '✓' : '+'}</span>
+                                        <span>{skillName}</span>
+                                        {isAuto && <span className="text-[9px] bg-slate-800 text-slate-400 px-1 rounded">Auto</span>}
+                                      </button>
+                                    );
+                                  });
+                                })()}
                               </div>
 
                               {/* Custom skill input */}
@@ -2437,14 +2464,14 @@ export default function App() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDownloadPdf(r);
+                                    setActiveResumeId(r.id);
+                                    setTimeout(() => window.print(), 100);
                                   }}
-                                  disabled={isGeneratingPdf}
-                                  className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold disabled:opacity-50"
-                                  title="Download Resume as PDF File"
+                                  className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold"
+                                  title="Vector Print PDF (100% ATS Compatible)"
                                 >
-                                  <Download className="w-3 h-3" />
-                                  <span>{isGeneratingPdf ? 'Compiling...' : 'PDF'}</span>
+                                  <Printer className="w-3 h-3 text-indigo-400" />
+                                  <span>Print ATS PDF</span>
                                 </button>
                               </div>
                             </div>
@@ -2467,27 +2494,15 @@ export default function App() {
                         {activeResume ? activeResume.title : 'No Resume Selected'}
                       </span>
                       {activeResume && (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadPdf(activeResume)}
-                            disabled={isGeneratingPdf}
-                            className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-md transition disabled:opacity-50"
-                            title="Direct PDF File Download"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>{isGeneratingPdf ? 'Compiling PDF...' : 'Download PDF File'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => window.print()}
-                            className="flex items-center space-x-1.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 font-semibold text-xs px-3 py-1 rounded-lg transition shadow"
-                            title="Native Browser Vector Print to PDF (100% Highlightable Text & ATS Compatible)"
-                          >
-                            <Printer className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Vector Print PDF (ATS Highlightable)</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => window.print()}
+                          className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-md transition"
+                          title="Native Vector Print to PDF (100% Highlightable Text & ATS Compatible)"
+                        >
+                          <Printer className="w-4 h-4 text-indigo-200" />
+                          <span>Download / Print ATS PDF</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2514,7 +2529,7 @@ export default function App() {
                   ) : (
                     <div 
                       id="resume-document-pdf-area"
-                      className="p-6 sm:p-8 rounded-b-xl shadow-xl space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all border-none"
+                      className="p-6 sm:p-8 pb-12 sm:pb-16 rounded-b-xl shadow-xl space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all border-none"
                       style={{
                         backgroundColor: activeStyle.theme.bgColor,
                         color: activeStyle.theme.textColor,
@@ -2655,15 +2670,32 @@ export default function App() {
                                 <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => {
                                   const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                  const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
                                   const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
-                                  const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+                                  const companyPeriodText = [
+                                    hasCompany ? exp.company.trim() : null,
+                                    hasLocation ? exp.location.trim() : null,
+                                    hasPeriod ? exp.period.trim() : null
+                                  ].filter(Boolean).join(' | ');
 
                                   return (
                                     <div key={exp.id} className="space-y-0.5 pdf-card-block">
                                       <div className="flex justify-between items-baseline text-[11px]">
                                         <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
-                                        {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                        {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
+                                          <span className="font-semibold opacity-80 shrink-0 ml-2" style={{ color: activeStyle.theme.secondaryColor }}>{exp.period}</span>
+                                        )}
                                       </div>
+                                      {(exp.company || exp.location) && (
+                                        <div className="flex justify-between items-baseline text-[10.5px] opacity-90">
+                                          <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                            {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
+                                          </span>
+                                          {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
+                                            <span className="opacity-75 shrink-0 ml-2" style={{ color: activeStyle.theme.textColor }}>{exp.location}</span>
+                                          )}
+                                        </div>
+                                      )}
                                       {exp.skills && exp.skills.length > 0 && (
                                         <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                           Skills: {exp.skills.join(', ')}
@@ -2707,15 +2739,32 @@ export default function App() {
                                 <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => {
                                   const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                  const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
                                   const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
-                                  const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+                                  const companyPeriodText = [
+                                    hasCompany ? exp.company.trim() : null,
+                                    hasLocation ? exp.location.trim() : null,
+                                    hasPeriod ? exp.period.trim() : null
+                                  ].filter(Boolean).join(' | ');
 
                                   return (
                                     <div key={exp.id} className="space-y-0.5">
                                       <div className="flex justify-between items-baseline text-[11px]">
                                         <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
-                                        {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                        {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
+                                          <span className="font-semibold opacity-80 shrink-0 ml-2" style={{ color: activeStyle.theme.secondaryColor }}>{exp.period}</span>
+                                        )}
                                       </div>
+                                      {(exp.company || exp.location) && (
+                                        <div className="flex justify-between items-baseline text-[10.5px] opacity-90">
+                                          <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                            {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
+                                          </span>
+                                          {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
+                                            <span className="opacity-75 shrink-0 ml-2" style={{ color: activeStyle.theme.textColor }}>{exp.location}</span>
+                                          )}
+                                        </div>
+                                      )}
                                       {exp.skills && exp.skills.length > 0 && (
                                         <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                           Skills: {exp.skills.join(', ')}
@@ -2901,8 +2950,13 @@ export default function App() {
                               <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {totalItems.map(exp => {
                                 const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
+                                const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
                                 const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
-                                const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
+                                const companyPeriodText = [
+                                  hasCompany ? exp.company.trim() : null,
+                                  hasLocation ? exp.location.trim() : null,
+                                  hasPeriod ? exp.period.trim() : null
+                                ].filter(Boolean).join(' | ');
 
                                 return (
                                   <div 
@@ -2915,8 +2969,20 @@ export default function App() {
                                   >
                                     <div className="flex justify-between items-baseline text-[11px]">
                                       <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
-                                      {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
+                                      {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
+                                        <span className="font-semibold opacity-80 shrink-0 ml-2" style={{ color: activeStyle.theme.secondaryColor }}>{exp.period}</span>
+                                      )}
                                     </div>
+                                    {(exp.company || exp.location) && (
+                                      <div className="flex justify-between items-baseline text-[10.5px] opacity-90">
+                                        <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                          {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
+                                        </span>
+                                        {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
+                                          <span className="opacity-75 shrink-0 ml-2" style={{ color: activeStyle.theme.textColor }}>{exp.location}</span>
+                                        )}
+                                      </div>
+                                    )}
                                     {exp.skills && exp.skills.length > 0 && (
                                       <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                         Skills: {exp.skills.join(', ')}
@@ -3119,7 +3185,7 @@ export default function App() {
                     <button
                       onClick={() => resumePdfFileInputRef.current?.click()}
                       className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-500/30 text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow whitespace-nowrap"
-                      title="Upload PDF Resume to Auto-Extract YAML via Gemini AI"
+                      title="Upload PDF Resume to Auto-Extract YAML via Spark AI"
                     >
                       <Upload className="w-4 h-4 text-purple-200" />
                       <span>Upload Resume PDF</span>
@@ -3618,7 +3684,7 @@ export default function App() {
                             onClick={() => handleAiEnhanceBullet(idx)}
                             disabled={!item.text.trim() || enhancingBulletIndex === idx}
                             className="flex items-center space-x-1.5 text-xs bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800 px-2.5 py-1 rounded-lg transition disabled:opacity-40"
-                            title="Enhance Bullet with Gemini AI"
+                            title="Enhance Bullet with Spark AI"
                           >
                             {enhancingBulletIndex === idx ? (
                               <>
@@ -3757,7 +3823,7 @@ export default function App() {
                   {isLlmGenerating ? (
                     <>
                       <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      <span>Gemini Converting...</span>
+                      <span>Spark AI Converting...</span>
                     </>
                   ) : (
                     <>
@@ -3970,7 +4036,7 @@ export default function App() {
                   {editingStyle ? `Refine & Edit Resume Style: ${editingStyle.name}` : 'Create Custom AI Resume Style'}
                 </h3>
                 <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded-full font-mono">
-                  ✨ Gemini AI Powered
+                  ✨ Spark AI Powered
                 </span>
               </div>
               <button
@@ -4106,12 +4172,12 @@ export default function App() {
                     {isGeneratingAiStyle ? (
                       <>
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span>{editingStyle ? 'Gemini Refining Style...' : 'Gemini Designing Style...'}</span>
+                        <span>{editingStyle ? 'Spark AI Refining Style...' : 'Spark AI Designing Style...'}</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 text-purple-200" />
-                        <span>{editingStyle ? 'Refine Style with Gemini AI' : 'Generate AI Resume Style'}</span>
+                        <span>{editingStyle ? 'Refine Style with Spark AI' : 'Generate Resume Style with Spark AI'}</span>
                       </>
                     )}
                   </button>

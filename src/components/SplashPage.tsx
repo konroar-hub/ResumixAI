@@ -209,7 +209,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
       <section className="relative z-10 pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center flex-1 flex flex-col justify-center">
         <div className="inline-flex items-center space-x-2 bg-indigo-950/80 border border-indigo-500/30 px-3.5 py-1.5 rounded-full text-xs font-medium text-indigo-300 mb-8 backdrop-blur-sm self-center shadow-lg">
           <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-          <span>Powered by Google Gemini 2.5 Flash & Firebase</span>
+          <span>Powered by Spark AI & Firebase</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight sm:leading-none">
@@ -220,7 +220,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
         </h1>
 
         <p className="mt-6 text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Maintain a master repository of your career experiences. Assemble targeted, high-impact ATS resume variants in seconds using modular cards and Gemini AI keyword matching.
+          Maintain a master repository of your career experiences. Assemble targeted, high-impact ATS resume variants in seconds using modular cards and Spark AI keyword matching.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -246,7 +246,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
           <div className="bg-slate-900/60 border border-slate-800/80 p-3.5 rounded-xl backdrop-blur-sm">
             <div className="flex items-center space-x-2 text-purple-400 text-xs font-bold uppercase tracking-wider mb-1">
               <Cpu className="w-4 h-4" />
-              <span>Gemini AI Engine</span>
+              <span>Spark AI Engine</span>
             </div>
             <p className="text-xs text-slate-400">Match resume bullet points to job posting requirements.</p>
           </div>
@@ -336,7 +336,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
                 </h4>
                 <p className="text-[11px] text-slate-700 font-sans mt-1">
                   {activeDemoTab === 'architect' ? 'Distributed Systems, Microservices, Kubernetes, Go, Python, AWS, PostgreSQL' :
-                   activeDemoTab === 'ai' ? 'PyTorch, Gemini 2.5 Flash, LLM Fine-Tuning, Python, Vector DBs, RAG Architectures' :
+                   activeDemoTab === 'ai' ? 'PyTorch, Spark AI Engine, LLM Fine-Tuning, Python, Vector DBs, RAG Architectures' :
                    'React, TypeScript, Next.js, Tailwind CSS, Web Vitals Optimization, State Management'}
                 </p>
               </div>
@@ -366,7 +366,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
                         <span>OpenAI Partner Team • 2023 - Present</span>
                       </div>
                       <ul className="list-disc list-inside text-[11px] text-slate-700 mt-1 space-y-0.5">
-                        <li>Integrated Google Gemini 2.5 Flash API for streaming document analysis with sub-100ms first token latency.</li>
+                        <li>Integrated Spark AI Engine for streaming document analysis with sub-100ms first token latency.</li>
                         <li>Implemented RAG semantic retrieval indexing across 5,000,000+ technical resume documents.</li>
                       </ul>
                     </div>
@@ -398,7 +398,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
             <FileText className="w-4 h-4 text-indigo-400" />
             <span className="font-semibold text-slate-400">Resumix AI</span>
             <span>—</span>
-            <span>Deployable on Vercel with Firebase & Gemini AI</span>
+            <span>Deployable on Vercel with Firebase & Spark AI</span>
           </div>
 
           <div className="flex items-center space-x-4">
