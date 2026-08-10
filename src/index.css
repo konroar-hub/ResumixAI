@@ -24,8 +24,12 @@
   background: #475569;
 }
 
-/* Printable Resume PDF Export Styles - Force Exact Background Fill & Border Colors */
+/* Printable Resume PDF Export Styles - Force Exact Background Fill, Grid Columns, & No Artifact Borders */
 @media print {
+  @page {
+    margin: 0.4in;
+    size: portrait;
+  }
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -41,14 +45,17 @@
     display: none !important;
   }
   .print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
-    padding: 0.5in !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
+    border-right: none !important;
+    border-left: none !important;
+    outline: none !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
@@ -57,5 +64,18 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
+    box-shadow: none !important;
+  }
+  /* Force grid columns to be preserved in print layout engine */
+  .grid-cols-12 {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    gap: 1.5rem !important;
+  }
+  .col-span-4 {
+    grid-column: span 4 / span 4 !important;
+  }
+  .col-span-8 {
+    grid-column: span 8 / span 8 !important;
   }
 }

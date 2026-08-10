@@ -1844,10 +1844,10 @@ export default function App() {
                     {/* Layout Body Renderer */}
                     {activeStyle.theme.layout === 'sidebar-left' ? (
                       /* Split Left Sidebar Layout */
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                      <div className="grid grid-cols-12 gap-6">
                         {/* Left Sidebar Column */}
                         <div 
-                          className="md:col-span-4 p-4 rounded-xl space-y-4 border"
+                          className="col-span-4 p-4 rounded-xl space-y-4 border"
                           style={{ 
                             backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
                             borderColor: activeStyle.theme.dividerColor
@@ -1903,7 +1903,7 @@ export default function App() {
                         </div>
 
                         {/* Right Main Column */}
-                        <div className="md:col-span-8 space-y-5">
+                        <div className="col-span-8 space-y-5">
                           {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
                             const items = (parsedProfile?.experiences || []).filter(e => 
                               (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
@@ -1949,9 +1949,9 @@ export default function App() {
                       </div>
                     ) : activeStyle.theme.layout === 'sidebar-right' ? (
                       /* Split Right Sidebar Layout */
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                      <div className="grid grid-cols-12 gap-6">
                         {/* Left Main Column */}
-                        <div className="md:col-span-8 space-y-5">
+                        <div className="col-span-8 space-y-5">
                           {SECTION_ORDER.filter(s => s !== 'skills' && s !== 'about').map(sec => {
                             const items = (parsedProfile?.experiences || []).filter(e => 
                               (e.category || 'experience') === sec && (activeResume?.selectedExpIds?.includes(e.id) ?? false)
@@ -1997,7 +1997,7 @@ export default function App() {
 
                         {/* Right Sidebar Column */}
                         <div 
-                          className="md:col-span-4 p-4 rounded-xl space-y-4 border"
+                          className="col-span-4 p-4 rounded-xl space-y-4 border"
                           style={{ 
                             backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
                             borderColor: activeStyle.theme.dividerColor
