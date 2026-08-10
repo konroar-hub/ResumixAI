@@ -384,9 +384,7 @@ export default function App() {
       originalWidth = element.style.width;
       originalMinWidth = element.style.minWidth;
 
-      // Temporarily enforce 800px desktop width and strip card borders/shadows during canvas capture
-      element.style.width = '800px';
-      element.style.minWidth = '800px';
+      // Strip outer card borders/shadows during canvas capture without distorting live layout
       element.style.border = 'none';
       element.style.boxShadow = 'none';
       element.style.borderRadius = '0px';
@@ -427,9 +425,7 @@ export default function App() {
           useCORS: true,
           logging: false,
           letterRendering: false,
-          foreignObjectRendering: true,
-          width: 800,
-          windowWidth: 850
+          foreignObjectRendering: true
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['css', 'legacy'] }
