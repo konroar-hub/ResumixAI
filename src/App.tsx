@@ -441,6 +441,54 @@ export default function App() {
     return destCanvas.toDataURL('image/png');
   };
 
+  const embedSelectableTextLayer = (pdf: jsPDF, rootEl: HTMLElement, elementWidth: number, pageOffsetPx: number = 0, targetPageNum: number = 1) => {
+    try {
+      pdf.setPage(targetPageNum);
+      const parentRect = rootEl.getBoundingClientRect();
+      const page1HeightPx = Math.floor((elementWidth * 11) / 8.5);
+
+      const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null);
+      let node: Node | null;
+
+      while ((node = walker.nextNode())) {
+        const parentEl = node.parentElement;
+        if (!parentEl) continue;
+
+        const text = node.nodeValue ? node.nodeValue.trim() : '';
+        if (!text) continue;
+
+        if (parentEl.closest('.no-print') || parentEl.tagName === 'SVG' || parentEl.tagName === 'BUTTON') continue;
+
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = range.getClientRects();
+
+        if (rects.length > 0) {
+          const rect = rects[0];
+          const relTopPx = rect.top - parentRect.top;
+          const relLeftPx = rect.left - parentRect.left;
+
+          if (relTopPx >= pageOffsetPx - 10 && relTopPx < (pageOffsetPx + page1HeightPx)) {
+            const computedStyle = window.getComputedStyle(parentEl);
+            const fontSizePx = parseFloat(computedStyle.fontSize) || 12;
+            const fontSizePt = Math.max(7, Math.min(18, fontSizePx * 0.75));
+
+            const xInches = Math.max(0.25, (relLeftPx * 8.5) / elementWidth);
+            const yInches = Math.max(0.35, (((relTopPx - pageOffsetPx) * 11) / page1HeightPx) + (fontSizePt / 72));
+
+            try {
+              pdf.setFontSize(fontSizePt);
+              pdf.setTextColor(0, 0, 0);
+              pdf.text(text, xInches, yInches);
+            } catch (err) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error embedding selectable text layer in PDF:', e);
+    }
+  };
+
   const handleDownloadPdf = async (resumeToDownload?: ResumeItem) => {
     const targetResume = resumeToDownload || activeResume;
     if (!targetResume) return;
@@ -544,6 +592,10 @@ export default function App() {
         pdf.setFillColor(pdfBgColor);
         pdf.rect(0, 0, 8.5, 11.0, 'F');
         pdf.addImage(fullCanvas.toDataURL('image/png'), 'PNG', 0, 0, 8.5, (updatedHeight * 8.5) / elementWidth);
+        
+        // Embed Highlightable Vector Text Layer for ATS Compatibility
+        embedSelectableTextLayer(pdf, element, elementWidth, 0, 1);
+
         pdf.save(filename);
         return;
       }
@@ -560,6 +612,7 @@ export default function App() {
       pdf.setFillColor(pdfBgColor);
       pdf.rect(0, 0, 8.5, 11.0, 'F');
       pdf.addImage(page1Png, 'PNG', 0, 0, 8.5, 11.0);
+      embedSelectableTextLayer(pdf, element, elementWidth, 0, 1);
 
       // Page 2 (Full 11.0 in height with 0.4in top margin)
       pdf.addPage('letter', 'portrait');
@@ -567,6 +620,7 @@ export default function App() {
       pdf.rect(0, 0, 8.5, 11.0, 'F');
       const page2NaturalHeightInches = (remainingCanvasHeight * 8.5) / fullCanvas.width;
       pdf.addImage(page2Png, 'PNG', 0, 0.4, 8.5, Math.min(10.6, page2NaturalHeightInches));
+      embedSelectableTextLayer(pdf, element, elementWidth, page1HeightPx, 2);
 
       pdf.save(filename);
     } catch (err) {
@@ -2416,11 +2470,11 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => window.print()}
-                            className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 py-1 rounded-lg transition"
-                            title="Vector ATS Print to PDF"
+                            className="flex items-center space-x-1.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 font-semibold text-xs px-3 py-1 rounded-lg transition shadow"
+                            title="Native Browser Vector Print to PDF (100% Highlightable Text & ATS Compatible)"
                           >
                             <Printer className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>Vector Print PDF</span>
+                            <span>Vector Print PDF (ATS Highlightable)</span>
                           </button>
                         </div>
                       )}
