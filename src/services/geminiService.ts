@@ -214,6 +214,90 @@ ${resumeText.slice(0, 5000)}`;
 }
 
 /**
+ * 2b. AI Multimodal PDF/Document Resume to YAML Converter
+ */
+export async function convertPdfToYamlWithGemini(fileBase64: string, mimeType: string = 'application/pdf'): Promise<string> {
+  if (!ai) {
+    throw new Error('Gemini API key is not configured.');
+  }
+
+  const cleanBase64 = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+
+  const prompt = `You are an expert resume data extractor. Parse the attached resume document file (${mimeType}) completely and convert all profile details, work history, projects, skills, education, and bios into valid YAML matching this EXACT schema structure:
+
+name: "Full Candidate Name"
+title: "Current / Target Professional Role"
+email: "candidate@email.com"
+phone: "(555) 000-0000"
+location: "City, State / Country"
+summary: "Professional summary paragraph"
+experiences:
+  - id: "about-1"
+    category: "about"
+    title: "Professional Summary & Bio"
+    company: "N/A"
+    period: "Present"
+    location: "Remote"
+    skills: ["Core Area 1", "Core Area 2"]
+    bullets:
+      - "Comprehensive overview paragraph of technical experience..."
+  - id: "exp-1"
+    category: "experience"
+    title: "Job Title"
+    company: "Company Name"
+    period: "Employment Period (e.g. Jan 2022 - Present)"
+    location: "City, State"
+    skills: ["Skill 1", "Skill 2"]
+    bullets:
+      - "Specific quantifiable achievement bullet point 1"
+      - "Specific quantifiable achievement bullet point 2"
+  - id: "proj-1"
+    category: "project"
+    title: "Project Title"
+    company: "Personal Project"
+    period: "2023"
+    location: "Remote"
+    skills: ["Technology 1", "Framework 2"]
+    bullets:
+      - "Project detail bullet point 1"
+  - id: "edu-1"
+    category: "education"
+    title: "Degree Name (e.g. B.S. Computer Science)"
+    company: "University / Institution"
+    period: "Graduation Year"
+    location: "City, State"
+    skills: ["Academic Focus 1"]
+    bullets:
+      - "Relevant coursework, honors, or leadership"
+
+RULES:
+1. Ensure unique 'id' strings for every experience entry (exp-1, exp-2, proj-1, edu-1).
+2. Categorize items strictly into: "experience", "project", "education", or "about".
+3. Extract all bullet points, dates, company names, and technical skills accurately.
+4. Output ONLY valid YAML code inside a markdown code block (\`\`\`yaml ... \`\`\`). Do NOT add conversational preamble.`;
+
+  const response = await ai.models.generateContent({
+    model: MODEL_NAME,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              data: cleanBase64,
+              mimeType: mimeType
+            }
+          },
+          { text: prompt }
+        ]
+      }
+    ]
+  });
+
+  return response.text || '';
+}
+
+/**
  * 3. AI Bullet Achievement Enhancer (gemini-flash-latest)
  */
 export async function enhanceBulletWithGemini(

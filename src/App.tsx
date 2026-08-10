@@ -33,12 +33,14 @@ import {
   LogOut,
   Zap,
   GitFork,
-  Palette
+  Palette,
+  Upload
 } from 'lucide-react';
 import { SplashPage } from './components/SplashPage';
 import {
   tailorResumeWithGemini,
   convertResumeTextToYamlWithGemini,
+  convertPdfToYamlWithGemini,
   enhanceBulletWithGemini,
   analyzeJobMatchWithGemini,
   generateResumeStyleWithGemini,
@@ -795,7 +797,7 @@ export default function App() {
   const [cardFormSkills, setCardFormSkills] = useState('');
   const [cardFormBulletList, setCardFormBulletList] = useState<{ id: string; text: string }[]>([{ id: `b-${Date.now()}-0`, text: '' }]);
 
-  // Paste YAML & AI Enhancer Loading States
+  // Paste YAML, PDF Upload & AI Enhancer Loading States
   const [isPasteYamlOpen, setIsPasteYamlOpen] = useState(false);
   const [pasteYamlInput, setPasteYamlInput] = useState('');
   const [pasteYamlError, setPasteYamlError] = useState('');
@@ -803,6 +805,67 @@ export default function App() {
   const [enhancingBulletIndex, setEnhancingBulletIndex] = useState<number | null>(null);
   const [bulletCustomPrompts, setBulletCustomPrompts] = useState<{ [bulletId: string]: string }>({});
   const [showPromptInput, setShowPromptInput] = useState<{ [bulletId: string]: boolean }>({});
+
+  const resumePdfFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handlePdfFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsPasteYamlOpen(true);
+    setIsLlmGenerating(true);
+    setPasteYamlError('');
+    setPasteYamlInput('');
+
+    try {
+      if (file.name.endsWith('.pdf') || file.type === 'application/pdf') {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64Data = reader.result as string;
+            const yamlResult = await convertPdfToYamlWithGemini(base64Data, 'application/pdf');
+            setPasteYamlInput(yamlResult);
+          } catch (err: any) {
+            setPasteYamlError(err?.message || 'Failed to extract YAML from PDF document.');
+          } finally {
+            setIsLlmGenerating(false);
+          }
+        };
+        reader.onerror = () => {
+          setPasteYamlError('Error reading PDF file.');
+          setIsLlmGenerating(false);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const textContent = reader.result as string;
+            if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+              setPasteYamlInput(textContent);
+            } else {
+              const yamlResult = await convertResumeTextToYamlWithGemini(textContent);
+              setPasteYamlInput(yamlResult);
+            }
+          } catch (err: any) {
+            setPasteYamlError(err?.message || 'Failed to convert document text to YAML.');
+          } finally {
+            setIsLlmGenerating(false);
+          }
+        };
+        reader.onerror = () => {
+          setPasteYamlError('Error reading document file.');
+          setIsLlmGenerating(false);
+        };
+        reader.readAsText(file);
+      }
+    } catch (err: any) {
+      setPasteYamlError(err?.message || 'Failed to process uploaded file.');
+      setIsLlmGenerating(false);
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
 
   const handleAiEnhanceBullet = async (index: number) => {
     const item = cardFormBulletList[index];
@@ -2820,6 +2883,23 @@ export default function App() {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    <input
+                      type="file"
+                      ref={resumePdfFileInputRef}
+                      onChange={handlePdfFileUpload}
+                      accept=".pdf,.docx,.txt,.md,.yaml,.yml,.json"
+                      className="hidden"
+                    />
+
+                    <button
+                      onClick={() => resumePdfFileInputRef.current?.click()}
+                      className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-500/30 text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow whitespace-nowrap"
+                      title="Upload PDF Resume to Auto-Extract YAML via Gemini AI"
+                    >
+                      <Upload className="w-4 h-4 text-purple-200" />
+                      <span>Upload Resume PDF</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setPasteYamlInput('');
@@ -3392,20 +3472,31 @@ export default function App() {
               <div>
                 <span className="text-xs font-semibold text-indigo-300 block flex items-center space-x-1">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-400 inline mr-1" />
-                  <span>LLM Resume Converter Prompt</span>
+                  <span>AI Resume Document & YAML Parser</span>
                 </span>
                 <span className="text-[11px] text-slate-400 block">
-                  Copy prompt to convert any PDF or text resume into Resume Tailor YAML using ChatGPT or Claude.
+                  Upload a PDF resume file or paste raw YAML code to auto-extract experience, education, skills, and summary.
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={copyLlmPromptToClipboard}
-                className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition shrink-0"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedPromptSuccess ? '✓ Copied Prompt!' : 'Copy Prompt'}</span>
-              </button>
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => resumePdfFileInputRef.current?.click()}
+                  className="flex items-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition shrink-0"
+                  title="Upload PDF Resume File"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={copyLlmPromptToClipboard}
+                  className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition shrink-0"
+                >
+                  <Copy className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{copiedPromptSuccess ? '✓ Copied Prompt!' : 'Copy Prompt'}</span>
+                </button>
+              </div>
             </div>
 
             {/* YAML Textarea */}
