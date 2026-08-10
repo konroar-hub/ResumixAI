@@ -343,54 +343,44 @@ export default function App() {
     }
 
     setIsGeneratingPdf(true);
-    let offscreenContainer: HTMLDivElement | null = null;
+    let styleTag: HTMLStyleElement | null = null;
+    let originalWidth = '';
+    let originalMinWidth = '';
+
     try {
       await new Promise(r => setTimeout(r, 150));
 
-      const sourceElement = document.getElementById('resume-document-pdf-area');
-      if (!sourceElement) {
+      const element = document.getElementById('resume-document-pdf-area');
+      if (!element) {
         window.print();
         return;
       }
 
-      // Wait for custom fonts to load for identical typography on mobile & desktop
       if (document.fonts) {
         try {
           await document.fonts.ready;
         } catch (e) {}
       }
 
-      // Create a fixed 800px staging area at viewport [0,0] to prevent WebRender culling in Mobile Firefox
-      offscreenContainer = document.createElement('div');
-      offscreenContainer.id = 'pdf-export-offscreen-stage';
-      offscreenContainer.style.position = 'fixed';
-      offscreenContainer.style.left = '0px';
-      offscreenContainer.style.top = '0px';
-      offscreenContainer.style.zIndex = '-9999';
-      offscreenContainer.style.opacity = '0.999';
-      offscreenContainer.style.pointerEvents = 'none';
-      offscreenContainer.style.width = '800px';
-      offscreenContainer.style.maxWidth = '800px';
-      offscreenContainer.style.minWidth = '800px';
-      offscreenContainer.style.backgroundColor = activeStyle.theme.bgColor || '#ffffff';
-      offscreenContainer.style.color = activeStyle.theme.textColor || '#000000';
-      offscreenContainer.style.fontFamily = sourceElement.style.fontFamily || 'sans-serif';
-      
-      // Clone resume HTML into the fixed 800px container
-      offscreenContainer.innerHTML = sourceElement.innerHTML;
-      document.body.appendChild(offscreenContainer);
+      // Save original styles
+      originalWidth = element.style.width;
+      originalMinWidth = element.style.minWidth;
 
-      // Inject temporary CSS override to fix letter-spacing/word-spacing bug & preserve grid
-      const styleTag = document.createElement('style');
+      // Temporarily enforce 800px desktop width during canvas capture
+      element.style.width = '800px';
+      element.style.minWidth = '800px';
+
+      // Inject temporary CSS override to fix letter-spacing/word-spacing bug
+      styleTag = document.createElement('style');
+      styleTag.id = 'pdf-clean-spacing-override';
       styleTag.innerHTML = `
-        #pdf-export-offscreen-stage,
-        #pdf-export-offscreen-stage * {
+        #resume-document-pdf-area,
+        #resume-document-pdf-area * {
           letter-spacing: normal !important;
           word-spacing: normal !important;
-          box-sizing: border-box !important;
         }
       `;
-      offscreenContainer.appendChild(styleTag);
+      document.head.appendChild(styleTag);
 
       const candidateName = parsedProfile.name
         ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
@@ -412,21 +402,24 @@ export default function App() {
           useCORS: true,
           logging: false,
           width: 800,
-          windowWidth: 800,
-          scrollX: 0,
-          scrollY: 0
+          windowWidth: 850
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      await html2pdf().set(opt).from(offscreenContainer).save();
+      await html2pdf().set(opt).from(element).save();
     } catch (err) {
       console.error('Client-side PDF generation error:', err);
       window.print();
     } finally {
-      if (offscreenContainer && offscreenContainer.parentNode) {
-        offscreenContainer.parentNode.removeChild(offscreenContainer);
+      const element = document.getElementById('resume-document-pdf-area');
+      if (element) {
+        element.style.width = originalWidth;
+        element.style.minWidth = originalMinWidth;
+      }
+      if (styleTag && styleTag.parentNode) {
+        styleTag.parentNode.removeChild(styleTag);
       }
       setIsGeneratingPdf(false);
     }
