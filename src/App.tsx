@@ -2597,19 +2597,18 @@ export default function App() {
                               {totalItems.map(exp => {
                                 const hasCompany = exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
                                 const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
+                                const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
                                 return (
                                       <div key={exp.id} className={`w-full pdf-card-block mb-3.5 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
+                                        {/* Line 1: Job Title / Degree Title */}
                                         <div className="text-[11.5px] leading-snug">
                                            <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                              {exp.title}
                                            </span>
-                                           {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                             <span className="font-semibold opacity-80 pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
-                                               • {exp.period}
-                                             </span>
-                                           )}
                                          </div>
-                                         {(hasCompany || hasLocation) && (
+
+                                         {/* Line 2: Company / Institution • Location • Dates */}
+                                         {(hasCompany || hasLocation || hasPeriod) && (
                                            <div className="text-[10.5px] leading-snug opacity-90">
                                              {hasCompany && (
                                                <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
@@ -2617,8 +2616,13 @@ export default function App() {
                                                </span>
                                              )}
                                              {hasLocation && (
-                                               <span className={`opacity-75 ${hasCompany ? 'pl-2' : ''}`} style={{ color: activeStyle.theme.textColor }}>
+                                               <span className={`opacity-75 ${hasCompany ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.textColor }}>
                                                  {hasCompany ? '• ' : ''}{exp.location}
+                                               </span>
+                                             )}
+                                             {hasPeriod && (
+                                               <span className={`font-semibold opacity-80 ${(hasCompany || hasLocation) ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.secondaryColor }}>
+                                                 {(hasCompany || hasLocation) ? '• ' : ''}{exp.period}
                                                </span>
                                              )}
                                            </div>
