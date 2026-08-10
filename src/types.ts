@@ -82,7 +82,7 @@ export interface ResumeStyleTheme {
   headerStyle?: 'minimal' | 'banner-filled' | 'left-accent-border' | 'top-bottom-border' | 'pills-banner';
   accentColor: string;
   fontFamily: 'inter' | 'roboto' | 'serif' | 'mono' | 'outfit' | 'playfair' | 'space-grotesk';
-  layout: 'single-column' | 'sidebar-left' | 'sidebar-right' | 'header-banner' | 'cards-modern' | 'brand-margin-stripe';
+  layout: 'single-column' | 'header-banner' | 'cards-modern' | 'brand-margin-stripe';
   borderStyle: 'solid' | 'dashed' | 'none' | 'double';
   dividerColor: string;
   sectionHeaderStyle: 'clean-underline' | 'filled-badge' | 'uppercase-accent' | 'minimal-left-border' | 'pill-badge' | 'gradient-bar';

@@ -462,13 +462,11 @@ CORE DESIGN PARADIGMS & GUIDELINES:
    - Secondary ('secondaryColor'): Dates, company names, subtitle accents.
    - Divider ('dividerColor'): Subtle borders (#cbd5e1, #334155) matching the overall theme background.
    - Accent ('accentColor'): Highlight skill badges, bullet icons, key metrics.
-4. STRUCTURAL ELEGANCE: Choose an appropriate layout:
-   - 'single-column': Pure ATS compliance, clean hierarchy.
-   - 'sidebar-left': Modern 2-column layout with dark/tinted left sidebar.
-   - 'sidebar-right': Technical layout with right column skills bank.
-   - 'cards-modern': Contemporary rounded card containers.
-   - 'header-banner': Full-width accent banner header for executive presence.
-   - 'brand-margin-stripe': Sleek vertical accent stripe along the left page edge.
+ 4. STRUCTURAL ELEGANCE: Choose an appropriate 100% ATS-compliant single-column layout:
+    - 'single-column': Pure ATS compliance, executive hierarchy.
+    - 'cards-modern': Contemporary rounded card containers.
+    - 'header-banner': Full-width accent banner header for executive presence.
+    - 'brand-margin-stripe': Sleek vertical accent stripe along the left page edge.
 
 Output JSON ONLY matching this exact structure:
 {
@@ -487,7 +485,7 @@ Output JSON ONLY matching this exact structure:
     "cardBgColor": "#HEX (Background tint color for card containers)",
     "accentColor": "#HEX (Highlights, bullets, skill badges)",
     "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
-    "layout": "single-column" | "sidebar-left" | "sidebar-right" | "header-banner" | "cards-modern" | "brand-margin-stripe",
+    "layout": "single-column" | "header-banner" | "cards-modern" | "brand-margin-stripe",
     "borderStyle": "solid" | "dashed" | "none" | "double",
     "dividerColor": "#HEX (Line dividers & border colors)",
     "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar",
@@ -503,7 +501,7 @@ Output JSON ONLY matching this exact structure:
 
     const parsed = JSON.parse(response.text || '{}');
     const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'outfit';
-    const validLayout = ['single-column', 'sidebar-left', 'sidebar-right', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'sidebar-left';
+    const validLayout = ['single-column', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'single-column';
     const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'pill-badge';
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : 'left';
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : 'pill-badges';
@@ -594,7 +592,7 @@ Output ONLY a JSON object:
     "stripeColor": "#HEX",
     "accentColor": "#HEX",
     "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
-    "layout": "single-column" | "sidebar-left" | "sidebar-right" | "header-banner" | "cards-modern" | "brand-margin-stripe",
+    "layout": "single-column" | "header-banner" | "cards-modern" | "brand-margin-stripe",
     "borderStyle": "solid" | "dashed" | "none" | "double",
     "dividerColor": "#HEX",
     "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar",
@@ -610,7 +608,7 @@ Output ONLY a JSON object:
 
     const parsed = JSON.parse(response.text || '{}');
     const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : existingStyle.theme.fontFamily;
-    const validLayout = ['single-column', 'sidebar-left', 'sidebar-right', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : existingStyle.theme.layout;
+    const validLayout = ['single-column', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'single-column';
     const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : existingStyle.theme.sectionHeaderStyle;
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : (existingStyle.theme.headerAlignment || 'left');
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : (existingStyle.theme.skillsDisplayStyle || 'pill-badges');
