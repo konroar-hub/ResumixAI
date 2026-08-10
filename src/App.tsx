@@ -425,7 +425,9 @@ export default function App() {
           useCORS: true,
           logging: false,
           letterRendering: false,
-          foreignObjectRendering: true
+          foreignObjectRendering: false,
+          scrollX: 0,
+          scrollY: 0
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['css', 'legacy'] }
