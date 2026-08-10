@@ -251,13 +251,24 @@ export default function App() {
 
   const deleteResumeStyle = (styleId: string) => {
     if (resumeStyles.length <= 1) return;
-    const updated = resumeStyles.filter(s => s.id !== styleId);
-    setResumeStyles(updated);
-    if (activeStyleId === styleId) {
-      setActiveStyleId(updated[0]?.id || 'style-executive');
-    }
+    const updatedStyles = resumeStyles.filter(s => s.id !== styleId);
+    setResumeStyles(updatedStyles);
+
+    const nextActiveId = activeStyleId === styleId ? (updatedStyles[0]?.id || 'style-executive') : activeStyleId;
+    setActiveStyleId(nextActiveId);
+
+    // Synchronously update LocalStorage so deleted styles are never resurrected on page reload
+    try {
+      localStorage.setItem('rt_styles', JSON.stringify(updatedStyles));
+      localStorage.setItem('rt_active_style_id', nextActiveId);
+    } catch (e) {}
+
+    // Synchronously update Firestore Cloud
     if (currentUser?.uid) {
-      saveUserDataToFirestore(currentUser.uid, { resumeStyles: updated });
+      saveUserDataToFirestore(currentUser.uid, {
+        resumeStyles: updatedStyles,
+        activeStyleId: nextActiveId
+      });
     }
   };
 
