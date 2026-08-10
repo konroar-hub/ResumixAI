@@ -434,13 +434,34 @@ export async function generateResumeStyleWithGemini(userDesignPrompt: string): P
   }
 
   try {
-    const prompt = `You are a world-class UI/UX designer and typography expert specializing in modern, high-impact resume templates.
-BE BOLD AND CREATIVE! Generate a distinct, vibrant, and drastically customized resume template style based on the user's prompt: "${userDesignPrompt}"
+    const prompt = `You are an elite, world-class executive resume designer and ATS typography architect.
+Generate a distinctive, highly aesthetic, readable, and visually stunning resume template based on the user's design request: "${userDesignPrompt}"
 
-Your output MUST be JSON ONLY matching this exact structure:
+CORE DESIGN PARADIGMS & GUIDELINES:
+1. CONTRAST & READABILITY: Body text ('textColor') MUST have high WCAG contrast against 'bgColor'. Never output low-contrast light gray text on white or dark text on dark slate.
+   - For light themes (bgColor #ffffff, #f8fafc, #f5f3ff): use dark charcoal textColor (#0f172a, #1e293b, #111827).
+   - For dark themes (bgColor #090d16, #0f172a, #0b0f19): use high-clarity slate text (#f1f5f9, #e2e8f0) with distinct sidebar tint (#1e293b).
+2. TYPOGRAPHY MATTERS: Select fonts purposefully:
+   - 'inter' or 'outfit': Modern tech, engineering, AI, product roles.
+   - 'space-grotesk' or 'mono': Systems, infrastructure, cybersecurity, backend.
+   - 'serif' or 'playfair': Executive leadership, legal, academia, finance.
+3. HARMONIOUS PALETTES:
+   - Primary ('primaryColor'): Dominant brand/accent color for headers and titles.
+   - Secondary ('secondaryColor'): Dates, company names, subtitle accents.
+   - Divider ('dividerColor'): Subtle borders (#cbd5e1, #334155) matching the overall theme background.
+   - Accent ('accentColor'): Highlight skill badges, bullet icons, key metrics.
+4. STRUCTURAL ELEGANCE: Choose an appropriate layout:
+   - 'single-column': Pure ATS compliance, clean hierarchy.
+   - 'sidebar-left': Modern 2-column layout with dark/tinted left sidebar.
+   - 'sidebar-right': Technical layout with right column skills bank.
+   - 'cards-modern': Contemporary rounded card containers.
+   - 'header-banner': Full-width accent banner header for executive presence.
+   - 'brand-margin-stripe': Sleek vertical accent stripe along the left page edge.
+
+Output JSON ONLY matching this exact structure:
 {
   "name": "Catchy & Unique Style Name",
-  "description": "Visual summary of theme palette and layout",
+  "description": "Visual summary of theme palette, typography, and structural aesthetic",
   "theme": {
     "primaryColor": "#HEX (Main dominant header/brand color)",
     "secondaryColor": "#HEX (Subtitle/company text color)",
