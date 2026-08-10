@@ -525,10 +525,52 @@ export default function App() {
     const originalTitle = document.title;
     document.title = formattedFileName;
 
+    // Inject temporary dynamic print style element to enforce 8.5in letter width and disable mobile font inflation
+    const printBgColor = activeStyle?.theme?.bgColor || '#ffffff';
+    const printStyle = document.createElement('style');
+    printStyle.id = 'dynamic-print-bg-style';
+    printStyle.innerHTML = `
+      @media print {
+        @page {
+          size: letter portrait !important;
+          margin: 0.4in !important;
+        }
+        html, body {
+          width: 8.5in !important;
+          min-width: 8.5in !important;
+          max-width: 8.5in !important;
+          background-color: ${printBgColor} !important;
+          -webkit-text-size-adjust: 100% !important;
+          -moz-text-size-adjust: 100% !important;
+          text-size-adjust: 100% !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        #resume-document-pdf-area, .print-area {
+          width: 8.5in !important;
+          min-width: 8.5in !important;
+          max-width: 8.5in !important;
+          background-color: ${printBgColor} !important;
+          -webkit-text-size-adjust: 100% !important;
+          -moz-text-size-adjust: 100% !important;
+          text-size-adjust: 100% !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+      }
+    `;
+    document.head.appendChild(printStyle);
+
     window.print();
 
     setTimeout(() => {
       document.title = originalTitle;
+      const styleEl = document.getElementById('dynamic-print-bg-style');
+      if (styleEl && styleEl.parentNode) {
+        styleEl.parentNode.removeChild(styleEl);
+      }
     }, 1000);
   };
 
