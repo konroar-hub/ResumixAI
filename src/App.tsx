@@ -2479,7 +2479,7 @@ export default function App() {
                     )}
 
                     {/* 100% Single Column ATS Layout Stream */}
-                    <div className={`space-y-5 ${activeStyle.theme.layout === 'brand-margin-stripe' ? 'pl-4 border-l-8' : ''}`} style={{ borderColor: activeStyle.theme.stripeColor || activeStyle.theme.primaryColor }}>
+                    <div className={`space-y-6 ${activeStyle.theme.layout === 'brand-margin-stripe' ? 'pl-4 border-l-8' : ''}`} style={{ borderColor: activeStyle.theme.stripeColor || activeStyle.theme.primaryColor }}>
                         {/* 1. About Me */}
                         {(() => {
                           const items = (parsedProfile?.experiences || []).filter(e => 
@@ -2493,7 +2493,7 @@ export default function App() {
                           return (
                             <div className="space-y-1 mb-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2"
+                                className="text-[13px] font-bold uppercase tracking-wider leading-none pt-2 pb-1.5"
                                 style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 About Me
@@ -2521,7 +2521,7 @@ export default function App() {
                           return (
                             <div className="space-y-1 mb-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2"
+                                className="text-[13px] font-bold uppercase tracking-wider leading-none pt-2 pb-1.5"
                                 style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 Technical Skills & Core Competencies
@@ -2574,7 +2574,7 @@ export default function App() {
                           return (
                             <div key={sec} className="space-y-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2 capitalize"
+                                className="text-[13px] font-bold uppercase tracking-wider leading-none pt-2 pb-1.5 capitalize"
                                 style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 {sec}
@@ -2582,8 +2582,8 @@ export default function App() {
                               <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {totalItems.map(exp => {
                                 return (
-                                      <div key={exp.id} className={`w-full pdf-card-block mb-3 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
-                                        <div className="text-[11px] leading-snug">
+                                      <div key={exp.id} className={`w-full pdf-card-block mb-3.5 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
+                                        <div className="text-[11.5px] leading-snug">
                                            <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                              {exp.title}
                                            </span>
