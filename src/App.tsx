@@ -401,7 +401,7 @@ export default function App() {
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
       const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
+        margin: [0, 0, 0, 0] as [number, number, number, number],
         filename: filename,
         image: { type: 'jpeg' as const, quality: 0.98 },
         html2canvas: {
@@ -414,7 +414,7 @@ export default function App() {
           windowWidth: 850
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['css', 'legacy'] }
       };
 
       await html2pdf().set(opt).from(element).save();
@@ -2309,7 +2309,7 @@ export default function App() {
                       <div className="grid grid-cols-12 gap-6">
                         {/* Left Sidebar Column */}
                         <div 
-                          className="col-span-4 p-4 rounded-xl space-y-4 border"
+                          className="col-span-4 sidebar-column p-4 rounded-xl space-y-4 border self-stretch min-h-full"
                           style={{ 
                             backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
                             borderColor: activeStyle.theme.dividerColor
@@ -2327,7 +2327,7 @@ export default function App() {
 
                             return (
                               <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   About Me
                                 </h3>
                                 {totalAboutItems.map(exp => (
@@ -2377,7 +2377,7 @@ export default function App() {
 
                             return (
                               <div key={sec} className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   {sec}
                                 </h2>
                                 {totalItems.map(exp => {
@@ -2386,7 +2386,7 @@ export default function App() {
                                   const companyPeriodText = hasCompany && hasPeriod ? `${exp.company} | ${exp.period}` : hasCompany ? exp.company : hasPeriod ? exp.period : '';
 
                                   return (
-                                    <div key={exp.id} className="space-y-0.5">
+                                    <div key={exp.id} className="space-y-0.5 pdf-card-block">
                                       <div className="flex justify-between items-baseline text-[11px]">
                                         <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>{exp.title}</span>
                                         {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
@@ -2459,7 +2459,7 @@ export default function App() {
 
                         {/* Right Sidebar Column */}
                         <div 
-                          className="col-span-4 p-4 rounded-xl space-y-4 border"
+                          className="col-span-4 sidebar-column p-4 rounded-xl space-y-4 border self-stretch min-h-full"
                           style={{ 
                             backgroundColor: activeStyle.theme.sidebarBgColor || activeStyle.theme.bgColor,
                             borderColor: activeStyle.theme.dividerColor
@@ -2531,7 +2531,7 @@ export default function App() {
                             <div className="space-y-1.5">
                               <h2 
                                 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 About Me
                               </h2>
@@ -2558,7 +2558,7 @@ export default function App() {
                             <div className="space-y-1.5">
                               <h2 
                                 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 Technical Skills & Core Competencies
                               </h2>
@@ -2610,7 +2610,7 @@ export default function App() {
                             <div key={sec} className="space-y-2">
                               <h2 
                                 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}
+                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 {sec}
                               </h2>
@@ -2622,7 +2622,7 @@ export default function App() {
                                 return (
                                   <div 
                                     key={exp.id} 
-                                    className={`space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`}
+                                    className={`space-y-0.5 pdf-card-block ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`}
                                     style={{ 
                                       backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent',
                                       borderColor: activeStyle.theme.dividerColor
