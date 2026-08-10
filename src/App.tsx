@@ -416,7 +416,9 @@ export default function App() {
       const html2pdfModule = await import('html2pdf.js');
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
-      const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+      const rect = element.getBoundingClientRect();
+      const measuredWidth = Math.max(Math.round(rect.width), element.clientWidth || 750);
+      const measuredHeight = Math.max(Math.round(rect.height), element.clientHeight || 1000);
 
       const opt = {
         margin: [0, 0, 0, 0] as [number, number, number, number],
@@ -427,7 +429,10 @@ export default function App() {
           useCORS: true,
           logging: false,
           letterRendering: false,
-          foreignObjectRendering: isMobileDevice,
+          foreignObjectRendering: false,
+          width: measuredWidth,
+          height: measuredHeight,
+          windowWidth: measuredWidth,
           scrollX: 0,
           scrollY: 0
         },
