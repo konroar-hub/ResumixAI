@@ -27,9 +27,33 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
       accentColor: '#6366f1',
       fontFamily: 'inter',
       layout: 'single-column',
+      headerAlignment: 'center',
+      headerStyle: 'minimal',
       borderStyle: 'solid',
       dividerColor: '#cbd5e1',
-      sectionHeaderStyle: 'clean-underline'
+      sectionHeaderStyle: 'clean-underline',
+      skillsDisplayStyle: 'comma-separated'
+    }
+  },
+  {
+    id: 'style-split-header',
+    name: 'Split Header Justified Right',
+    description: 'Name & Title justified Left with Contact Details justified Right on header bar',
+    theme: {
+      primaryColor: '#0f766e',
+      secondaryColor: '#0d9488',
+      textColor: '#1e293b',
+      bgColor: '#ffffff',
+      headerBgColor: '#f0fdf4',
+      headerAlignment: 'split-right',
+      headerStyle: 'top-bottom-border',
+      accentColor: '#14b8a6',
+      fontFamily: 'outfit',
+      layout: 'single-column',
+      borderStyle: 'solid',
+      dividerColor: '#99f6e4',
+      sectionHeaderStyle: 'uppercase-accent',
+      skillsDisplayStyle: 'pill-badges'
     }
   },
   {
@@ -43,12 +67,15 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
       bgColor: '#ffffff',
       sidebarBgColor: '#0f172a',
       headerTextColor: '#ffffff',
+      headerAlignment: 'left',
+      headerStyle: 'banner-filled',
       accentColor: '#2dd4bf',
       fontFamily: 'space-grotesk',
       layout: 'sidebar-left',
       borderStyle: 'solid',
       dividerColor: '#e2e8f0',
-      sectionHeaderStyle: 'uppercase-accent'
+      sectionHeaderStyle: 'uppercase-accent',
+      skillsDisplayStyle: 'pill-badges'
     }
   },
   {
@@ -61,31 +88,36 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
       textColor: '#0f172a',
       bgColor: '#f8fafc',
       sidebarBgColor: '#f1f5f9',
+      headerAlignment: 'left',
       accentColor: '#38bdf8',
       fontFamily: 'outfit',
       layout: 'sidebar-right',
       borderStyle: 'solid',
       dividerColor: '#cbd5e1',
-      sectionHeaderStyle: 'filled-badge'
+      sectionHeaderStyle: 'filled-badge',
+      skillsDisplayStyle: 'bulleted-grid'
     }
   },
   {
     id: 'style-header-banner',
-    name: 'Modern Header Hero',
-    description: 'Full-width rich header banner with contrasting typography & pill badges',
+    name: 'Coral Hero Banner',
+    description: 'Full-width rich coral header hero banner with white text',
     theme: {
-      primaryColor: '#0369a1',
-      secondaryColor: '#0284c7',
-      textColor: '#0f172a',
+      primaryColor: '#e25b4c',
+      secondaryColor: '#f87171',
+      textColor: '#1f2937',
       bgColor: '#ffffff',
-      headerBgColor: '#0f172a',
+      headerBgColor: '#e25b4c',
       headerTextColor: '#ffffff',
-      accentColor: '#38bdf8',
+      headerAlignment: 'center',
+      headerStyle: 'banner-filled',
+      accentColor: '#ef4444',
       fontFamily: 'outfit',
       layout: 'header-banner',
       borderStyle: 'solid',
-      dividerColor: '#e2e8f0',
-      sectionHeaderStyle: 'pill-badge'
+      dividerColor: '#fee2e2',
+      sectionHeaderStyle: 'pill-badge',
+      skillsDisplayStyle: 'comma-separated'
     }
   },
   {
@@ -98,17 +130,19 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
       textColor: '#1e1b4b',
       bgColor: '#faf5ff',
       cardBgColor: '#ffffff',
+      headerAlignment: 'left',
       accentColor: '#8b5cf6',
       fontFamily: 'inter',
       layout: 'cards-modern',
       borderStyle: 'solid',
       dividerColor: '#ddd6fe',
-      sectionHeaderStyle: 'minimal-left-border'
+      sectionHeaderStyle: 'minimal-left-border',
+      skillsDisplayStyle: 'pill-badges'
     }
   },
   {
     id: 'style-swiss-stripe',
-    name: 'Swiss Brand Stripe',
+    name: 'Swiss Brand Margin',
     description: 'Thick left margin brand stripe with clean editorial typography',
     theme: {
       primaryColor: '#b91c1c',
@@ -116,12 +150,14 @@ export const DEFAULT_RESUME_STYLES: ResumeStyle[] = [
       textColor: '#171717',
       bgColor: '#ffffff',
       stripeColor: '#b91c1c',
+      headerAlignment: 'left',
       accentColor: '#ef4444',
       fontFamily: 'playfair',
       layout: 'brand-margin-stripe',
       borderStyle: 'solid',
       dividerColor: '#fee2e2',
-      sectionHeaderStyle: 'gradient-bar'
+      sectionHeaderStyle: 'gradient-bar',
+      skillsDisplayStyle: 'comma-separated'
     }
   }
 ];

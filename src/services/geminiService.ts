@@ -364,14 +364,17 @@ Your output MUST be JSON ONLY matching this exact structure:
     "bgColor": "#HEX (Page background color, e.g. #ffffff, #090d16, #f8fafc, #f5f3ff)",
     "headerBgColor": "#HEX (Full width header banner color or empty string if transparent)",
     "headerTextColor": "#HEX (Header name text color)",
+    "headerAlignment": "center" | "left" | "right" | "split-right",
+    "headerStyle": "minimal" | "banner-filled" | "left-accent-border" | "top-bottom-border" | "pills-banner",
     "sidebarBgColor": "#HEX (Left sidebar background color for two-column layouts)",
     "cardBgColor": "#HEX (Background tint color for card containers)",
     "accentColor": "#HEX (Highlights, bullets, skill badges)",
     "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
-    "layout": "single-column" | "two-column-sidebar" | "header-banner" | "cards-modern",
+    "layout": "single-column" | "sidebar-left" | "sidebar-right" | "header-banner" | "cards-modern" | "brand-margin-stripe",
     "borderStyle": "solid" | "dashed" | "none" | "double",
     "dividerColor": "#HEX (Line dividers & border colors)",
-    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar"
+    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar",
+    "skillsDisplayStyle": "comma-separated" | "pill-badges" | "bulleted-grid"
   }
 }`;
 
@@ -385,6 +388,8 @@ Your output MUST be JSON ONLY matching this exact structure:
     const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : 'outfit';
     const validLayout = ['single-column', 'sidebar-left', 'sidebar-right', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : 'sidebar-left';
     const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : 'pill-badge';
+    const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : 'left';
+    const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : 'pill-badges';
 
     return {
       id: `style-ai-${Date.now()}`,
@@ -398,6 +403,8 @@ Your output MUST be JSON ONLY matching this exact structure:
         bgColor: parsed.theme?.bgColor || '#ffffff',
         headerBgColor: parsed.theme?.headerBgColor || undefined,
         headerTextColor: parsed.theme?.headerTextColor || undefined,
+        headerAlignment: validHeaderAlignment,
+        headerStyle: parsed.theme?.headerStyle || 'minimal',
         sidebarBgColor: parsed.theme?.sidebarBgColor || undefined,
         cardBgColor: parsed.theme?.cardBgColor || undefined,
         stripeColor: parsed.theme?.stripeColor || parsed.theme?.primaryColor || '#4f46e5',
@@ -406,7 +413,8 @@ Your output MUST be JSON ONLY matching this exact structure:
         layout: validLayout,
         borderStyle: 'solid',
         dividerColor: parsed.theme?.dividerColor || '#e2e8f0',
-        sectionHeaderStyle: validHeaderStyle
+        sectionHeaderStyle: validHeaderStyle,
+        skillsDisplayStyle: validSkillsStyle
       }
     };
   } catch (error) {

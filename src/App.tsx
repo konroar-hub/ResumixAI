@@ -1790,27 +1790,56 @@ export default function App() {
                         fontFamily: activeStyle.theme.fontFamily === 'serif' || activeStyle.theme.fontFamily === 'playfair' ? 'Georgia, serif' : activeStyle.theme.fontFamily === 'mono' ? 'Courier New, monospace' : activeStyle.theme.fontFamily === 'outfit' || activeStyle.theme.fontFamily === 'space-grotesk' ? 'Outfit, sans-serif' : 'Inter, sans-serif'
                       }}
                     >
-                    {/* Header Banner or Standard Header */}
-                    <div 
-                      className={`pb-4 text-center transition-all ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
-                      style={{
-                        borderColor: activeStyle.theme.dividerColor,
-                        backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
-                      }}
-                    >
-                      <h1 
-                        className="text-2xl font-bold tracking-tight uppercase"
-                        style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.primaryColor }}
+                    {/* Dynamic Header Layout Renderer */}
+                    {activeStyle.theme.headerAlignment === 'split-right' ? (
+                      <div 
+                        className={`pb-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
+                        style={{
+                          borderColor: activeStyle.theme.dividerColor,
+                          backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
+                        }}
                       >
-                        {parsedProfile.name}
-                      </h1>
-                      <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.headerTextColor ? activeStyle.theme.headerTextColor : activeStyle.theme.secondaryColor }}>
-                        {activeResume?.targetRole || parsedProfile.title}
-                      </p>
-                      <p className="text-[11px] opacity-80 mt-0.5" style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.textColor }}>
-                        {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
-                      </p>
-                    </div>
+                        <div>
+                          <h1 
+                            className="text-2xl font-bold tracking-tight uppercase"
+                            style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.primaryColor }}
+                          >
+                            {parsedProfile.name}
+                          </h1>
+                          <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.headerTextColor ? activeStyle.theme.headerTextColor : activeStyle.theme.secondaryColor }}>
+                            {activeResume?.targetRole || parsedProfile.title}
+                          </p>
+                        </div>
+                        <div className="text-[11px] opacity-80 sm:text-right space-y-0.5" style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.textColor }}>
+                          <div>{parsedProfile.email}</div>
+                          <div>{parsedProfile.phone} • {parsedProfile.location}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className={`pb-4 transition-all ${
+                          activeStyle.theme.headerAlignment === 'left' ? 'text-left' :
+                          activeStyle.theme.headerAlignment === 'right' ? 'text-right' : 'text-center'
+                        } ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
+                        style={{
+                          borderColor: activeStyle.theme.dividerColor,
+                          backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
+                        }}
+                      >
+                        <h1 
+                          className="text-2xl font-bold tracking-tight uppercase"
+                          style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.primaryColor }}
+                        >
+                          {parsedProfile.name}
+                        </h1>
+                        <p className="text-xs font-semibold mt-0.5" style={{ color: activeStyle.theme.headerTextColor ? activeStyle.theme.headerTextColor : activeStyle.theme.secondaryColor }}>
+                          {activeResume?.targetRole || parsedProfile.title}
+                        </p>
+                        <p className="text-[11px] opacity-80 mt-0.5" style={{ color: activeStyle.theme.headerTextColor || activeStyle.theme.textColor }}>
+                          {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Layout Body Renderer */}
                     {activeStyle.theme.layout === 'sidebar-left' ? (
@@ -2053,13 +2082,15 @@ export default function App() {
                           );
                         })()}
 
-                        {/* 2. Technical Skills */}
+                        {/* 2. Technical Skills & Core Competencies */}
                         {(() => {
                           const activeSkills = activeResume?.selectedSkills && activeResume.selectedSkills.length > 0
                             ? activeResume.selectedSkills
                             : autoFilledWizardSkills;
 
                           if (!activeSkills || activeSkills.length === 0) return null;
+
+                          const displayStyle = activeStyle.theme.skillsDisplayStyle || 'comma-separated';
 
                           return (
                             <div className="space-y-1.5">
@@ -2069,9 +2100,36 @@ export default function App() {
                               >
                                 Technical Skills & Core Competencies
                               </h2>
-                              <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
-                                {activeSkills.join(' • ')}
-                              </p>
+                              {displayStyle === 'pill-badges' ? (
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                  {activeSkills.map(sk => (
+                                    <span
+                                      key={sk}
+                                      className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold border shadow-xs"
+                                      style={{
+                                        borderColor: activeStyle.theme.dividerColor,
+                                        color: activeStyle.theme.textColor,
+                                        backgroundColor: activeStyle.theme.cardBgColor || activeStyle.theme.bgColor
+                                      }}
+                                    >
+                                      {sk}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : displayStyle === 'bulleted-grid' ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px] font-mono" style={{ color: activeStyle.theme.textColor }}>
+                                  {activeSkills.map(sk => (
+                                    <div key={sk} className="flex items-center space-x-1">
+                                      <span style={{ color: activeStyle.theme.accentColor }}>•</span>
+                                      <span>{sk}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
+                                  {activeSkills.join(' • ')}
+                                </p>
+                              )}
                             </div>
                           );
                         })()}

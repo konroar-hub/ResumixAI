@@ -77,12 +77,15 @@ export interface ResumeStyleTheme {
   bgColor: string;
   headerBgColor?: string;
   headerTextColor?: string;
+  headerAlignment?: 'center' | 'left' | 'right' | 'split-right';
+  headerStyle?: 'minimal' | 'banner-filled' | 'left-accent-border' | 'top-bottom-border' | 'pills-banner';
   accentColor: string;
   fontFamily: 'inter' | 'roboto' | 'serif' | 'mono' | 'outfit' | 'playfair' | 'space-grotesk';
   layout: 'single-column' | 'sidebar-left' | 'sidebar-right' | 'header-banner' | 'cards-modern' | 'brand-margin-stripe';
   borderStyle: 'solid' | 'dashed' | 'none' | 'double';
   dividerColor: string;
   sectionHeaderStyle: 'clean-underline' | 'filled-badge' | 'uppercase-accent' | 'minimal-left-border' | 'pill-badge' | 'gradient-bar';
+  skillsDisplayStyle?: 'comma-separated' | 'pill-badges' | 'bulleted-grid';
   cardBgColor?: string;
   sidebarBgColor?: string;
   stripeColor?: string;
