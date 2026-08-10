@@ -450,14 +450,11 @@ export async function generateResumeStyleWithGemini(userDesignPrompt: string): P
 Generate a distinctive, highly aesthetic, readable, and visually stunning resume template based on the user's design request: "${userDesignPrompt}"
 
 CORE DESIGN PARADIGMS & GUIDELINES:
-1. EXTREME HIGH CONTRAST & READABILITY (CRITICAL):
-   - For light backgrounds (#ffffff, #f8fafc, #f5f3ff, #f4f4f5):
-     • textColor MUST be deep high-contrast dark charcoal (#0f172a, #18181b, #000000, #1e293b).
-     • secondaryColor (dates, companies) MUST be sufficiently dark slate (#334155, #475569, #1e3a8a, #0369a1). NEVER output low-contrast light gray (#94a3b8, #cbd5e1) or pastel text on light background!
-     • primaryColor (section headers) MUST be rich, dark, and punchy (#000000, #0f172a, #1e3a8a, #4338ca, #0369a1, #065f46, #831843).
-   - For dark backgrounds (#090d16, #0f172a, #0b0f19):
-     • textColor MUST be crisp bright white (#ffffff, #f8fafc, #f1f5f9).
-     • secondaryColor MUST be bright slate (#cbd5e1, #94a3b8, #38bdf8).
+1. LIGHT BACKGROUNDS ONLY (MANDATORY FOR PRINT & ATS COMPATIBILITY):
+   - 'bgColor' MUST ALWAYS BE A CLEAN LIGHT BACKGROUND (#ffffff, #f8fafc, #f5f3ff, #fafafa). Dark mode styles or dark page backgrounds (#0f172a, #000000, #090d16) are STRICTLY FORBIDDEN to ensure perfect PDF printing and 100% ATS compliance.
+   - 'textColor' MUST be deep high-contrast dark charcoal (#0f172a, #18181b, #000000, #1e293b).
+   - 'secondaryColor' (dates, companies) MUST be sufficiently dark slate (#334155, #475569, #1e3a8a, #0369a1). NEVER output low-contrast light gray (#94a3b8, #cbd5e1) or pastel text on light background!
+   - 'primaryColor' (section headers) MUST be rich, dark, and punchy (#000000, #0f172a, #1e3a8a, #4338ca, #0369a1, #065f46, #831843).
 2. TYPOGRAPHY MATTERS: Select fonts purposefully:
    - 'inter' or 'outfit': Modern tech, engineering, AI, product roles.
    - 'space-grotesk' or 'mono': Systems, infrastructure, cybersecurity, backend.
@@ -465,7 +462,7 @@ CORE DESIGN PARADIGMS & GUIDELINES:
 3. HARMONIOUS PALETTES:
    - Primary ('primaryColor'): Dominant brand/accent color for headers and titles.
    - Secondary ('secondaryColor'): Dates, company names, subtitle accents.
-   - Divider ('dividerColor'): Subtle borders (#cbd5e1, #334155) matching the overall theme background.
+   - Divider ('dividerColor'): Subtle borders (#cbd5e1, #e2e8f0) matching the overall theme background.
    - Accent ('accentColor'): Highlight skill badges, bullet icons, key metrics.
  4. STRUCTURAL ELEGANCE: Choose an appropriate 100% ATS-compliant single-column layout:
     - 'single-column': Pure ATS compliance, executive hierarchy.
@@ -481,7 +478,7 @@ Output JSON ONLY matching this exact structure:
     "primaryColor": "#HEX (Main dominant header/brand color)",
     "secondaryColor": "#HEX (Subtitle/company text color)",
     "textColor": "#HEX (Body text color)",
-    "bgColor": "#HEX (Page background color, e.g. #ffffff, #090d16, #f8fafc, #f5f3ff)",
+    "bgColor": "#HEX (Page background color, ALWAYS #ffffff, #f8fafc, or #f5f3ff)",
     "headerBgColor": "#HEX (Full width header banner color or empty string if transparent)",
     "headerTextColor": "#HEX (Header name text color)",
     "headerAlignment": "center" | "left" | "right" | "split-right",
@@ -511,19 +508,20 @@ Output JSON ONLY matching this exact structure:
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : 'left';
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : 'pill-badges';
 
-    // Contrast Guard: Auto-clamp secondaryColor & textColor if generated too light on a white/light theme
-    const bgCol = (parsed.theme?.bgColor || '#ffffff').toLowerCase();
-    const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f5f3ff', '#f4f4f5', '#fafafa'].includes(bgCol);
+    // Strict Light Theme Clamp: Ensure bgColor is always a light paper background
+    let finalBgColor = (parsed.theme?.bgColor || '#ffffff').toLowerCase();
+    if (/^#(0|1|2|3|4)/i.test(finalBgColor)) {
+      finalBgColor = '#ffffff';
+    }
+
     let finalSecondaryColor = parsed.theme?.secondaryColor || '#475569';
     let finalTextColor = parsed.theme?.textColor || '#0f172a';
 
-    if (isLightBg) {
-      if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
-        finalSecondaryColor = '#475569';
-      }
-      if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
-        finalTextColor = '#18181b';
-      }
+    if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
+      finalSecondaryColor = '#475569';
+    }
+    if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
+      finalTextColor = '#18181b';
     }
 
     return {
@@ -535,7 +533,7 @@ Output JSON ONLY matching this exact structure:
         primaryColor: parsed.theme?.primaryColor || '#4f46e5',
         secondaryColor: finalSecondaryColor,
         textColor: finalTextColor,
-        bgColor: parsed.theme?.bgColor || '#ffffff',
+        bgColor: finalBgColor,
         headerBgColor: parsed.theme?.headerBgColor || undefined,
         headerTextColor: parsed.theme?.headerTextColor || undefined,
         headerAlignment: validHeaderAlignment,
@@ -633,19 +631,20 @@ Output ONLY a JSON object:
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : (existingStyle.theme.headerAlignment || 'left');
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : (existingStyle.theme.skillsDisplayStyle || 'pill-badges');
 
-    // Contrast Guard: Auto-clamp secondaryColor & textColor if generated too light on a white/light theme
-    const bgCol = (parsed.theme?.bgColor || existingStyle.theme.bgColor || '#ffffff').toLowerCase();
-    const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f5f3ff', '#f4f4f5', '#fafafa'].includes(bgCol);
+    // Strict Light Theme Clamp: Ensure bgColor is always a light paper background
+    let finalBgColor = (parsed.theme?.bgColor || existingStyle.theme.bgColor || '#ffffff').toLowerCase();
+    if (/^#(0|1|2|3|4)/i.test(finalBgColor)) {
+      finalBgColor = '#ffffff';
+    }
+
     let finalSecondaryColor = parsed.theme?.secondaryColor || existingStyle.theme.secondaryColor || '#475569';
     let finalTextColor = parsed.theme?.textColor || existingStyle.theme.textColor || '#0f172a';
 
-    if (isLightBg) {
-      if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
-        finalSecondaryColor = '#475569';
-      }
-      if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
-        finalTextColor = '#18181b';
-      }
+    if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
+      finalSecondaryColor = '#475569';
+    }
+    if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
+      finalTextColor = '#18181b';
     }
 
     return {
@@ -657,7 +656,7 @@ Output ONLY a JSON object:
         primaryColor: parsed.theme?.primaryColor || existingStyle.theme.primaryColor,
         secondaryColor: finalSecondaryColor,
         textColor: finalTextColor,
-        bgColor: parsed.theme?.bgColor || existingStyle.theme.bgColor,
+        bgColor: finalBgColor,
         headerBgColor: parsed.theme?.headerBgColor !== undefined ? parsed.theme.headerBgColor : existingStyle.theme.headerBgColor,
         headerTextColor: parsed.theme?.headerTextColor !== undefined ? parsed.theme.headerTextColor : existingStyle.theme.headerTextColor,
         headerAlignment: validHeaderAlignment,
