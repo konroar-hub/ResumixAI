@@ -366,9 +366,12 @@ export default function App() {
       originalWidth = element.style.width;
       originalMinWidth = element.style.minWidth;
 
-      // Temporarily enforce 800px desktop width during canvas capture
+      // Temporarily enforce 800px desktop width and strip card borders/shadows during canvas capture
       element.style.width = '800px';
       element.style.minWidth = '800px';
+      element.style.border = 'none';
+      element.style.boxShadow = 'none';
+      element.style.borderRadius = '0px';
 
       // Directly normalize inline letter-spacing and word-spacing on every child node
       // (Bypasses Firefox Gecko computed style cache delay during html2canvas traversal)
@@ -423,6 +426,9 @@ export default function App() {
       if (element) {
         element.style.width = originalWidth;
         element.style.minWidth = originalMinWidth;
+        element.style.border = '';
+        element.style.boxShadow = '';
+        element.style.borderRadius = '';
       }
       modifiedInlineStyles.forEach(item => {
         if (item.el) {
@@ -2239,7 +2245,7 @@ export default function App() {
                   ) : (
                     <div 
                       id="resume-document-pdf-area"
-                      className="p-6 sm:p-8 rounded-b-xl shadow-2xl border border-slate-300 space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all"
+                      className="p-6 sm:p-8 rounded-b-xl shadow-xl space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all border-none"
                       style={{
                         backgroundColor: activeStyle.theme.bgColor,
                         color: activeStyle.theme.textColor,
