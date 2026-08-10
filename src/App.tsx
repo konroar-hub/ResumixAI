@@ -2674,13 +2674,13 @@ export default function App() {
                                       <tbody>
                                         <tr>
                                           <td colSpan={2} className="w-full pb-0.5">
-                                            <div className="flex items-baseline justify-between w-full text-[11px] leading-snug">
+                                            <div className="text-[11px] leading-snug">
                                               <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                                 {exp.title}
                                               </span>
                                               {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                                <span className="font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
-                                                  {exp.period}
+                                                <span className="font-semibold opacity-80 pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
+                                                  • {exp.period}
                                                 </span>
                                               )}
                                             </div>
@@ -2689,13 +2689,13 @@ export default function App() {
                                         {(exp.company || exp.location) && (
                                           <tr>
                                             <td colSpan={2} className="w-full pb-0.5">
-                                              <div className="flex items-baseline justify-between w-full text-[10.5px] leading-snug opacity-90">
+                                              <div className="text-[10.5px] leading-snug opacity-90">
                                                 <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
                                                   {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
                                                 </span>
                                                 {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                                  <span className="text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
-                                                    {exp.location}
+                                                  <span className="opacity-75 pl-2" style={{ color: activeStyle.theme.textColor }}>
+                                                    • {exp.location}
                                                   </span>
                                                 )}
                                               </div>
@@ -2984,13 +2984,13 @@ export default function App() {
                                        <tbody>
                                          <tr>
                                            <td colSpan={2} className="w-full pb-0.5">
-                                             <div className="flex items-baseline justify-between w-full text-[11px] leading-snug">
+                                             <div className="text-[11px] leading-snug">
                                                <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                                  {exp.title}
                                                </span>
                                                {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                                 <span className="font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
-                                                   {exp.period}
+                                                 <span className="font-semibold opacity-80 pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
+                                                   • {exp.period}
                                                  </span>
                                                )}
                                              </div>
@@ -2999,13 +2999,13 @@ export default function App() {
                                          {(exp.company || exp.location) && (
                                            <tr>
                                              <td colSpan={2} className="w-full pb-0.5">
-                                               <div className="flex items-baseline justify-between w-full text-[10.5px] leading-snug opacity-90">
+                                               <div className="text-[10.5px] leading-snug opacity-90">
                                                  <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
                                                    {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
                                                  </span>
                                                  {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                                   <span className="text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
-                                                     {exp.location}
+                                                   <span className="opacity-75 pl-2" style={{ color: activeStyle.theme.textColor }}>
+                                                     • {exp.location}
                                                    </span>
                                                  )}
                                                </div>
