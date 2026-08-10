@@ -184,11 +184,18 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
             ) : (
               <div className="flex items-center space-x-2 sm:space-x-3">
                 <button
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-lg shadow-indigo-950/50 transition flex items-center space-x-1.5"
+                  onClick={onEnterApp}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-lg shadow-indigo-950/50 transition flex items-center space-x-1.5"
                 >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Sign In / Register</span>
+                  <span>Enter Studio App</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold text-xs px-3.5 py-2 rounded-lg transition flex items-center space-x-1.5"
+                >
+                  <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Sign In</span>
                 </button>
               </div>
             )}
@@ -216,12 +223,19 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={onEnterApp}
             className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm px-8 py-3.5 rounded-xl shadow-xl shadow-indigo-950/80 transition flex items-center justify-center space-x-2 group"
           >
-            <Lock className="w-4 h-4" />
-            <span>Sign In to Access Studio</span>
+            <Zap className="w-4 h-4 text-cyan-300" />
+            <span>Launch Studio App (Instant Access)</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </button>
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2"
+          >
+            <Lock className="w-4 h-4 text-indigo-400" />
+            <span>Cloud Account Sign In / Register</span>
           </button>
         </div>
 
@@ -493,6 +507,19 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
                 className="text-indigo-400 hover:underline font-medium text-center"
               >
                 {authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Log in'}
+              </button>
+            </div>
+            {/* Footer Skip Link */}
+            <div className="pt-2 border-t border-slate-800 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAuthModalOpen(false);
+                  onEnterApp();
+                }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition flex items-center justify-center space-x-1 mx-auto"
+              >
+                <span>⚡ Skip Sign In & Continue to Studio App →</span>
               </button>
             </div>
           </div>
