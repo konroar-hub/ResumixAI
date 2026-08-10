@@ -330,6 +330,59 @@ export default function App() {
       setIsCloudSaving(false);
     }
   };
+
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadPdf = async (resumeToDownload?: ResumeItem) => {
+    const targetResume = resumeToDownload || activeResume;
+    if (!targetResume) return;
+
+    if (resumeToDownload && resumeToDownload.id !== activeResumeId) {
+      setActiveResumeId(resumeToDownload.id);
+    }
+
+    setIsGeneratingPdf(true);
+    try {
+      await new Promise(r => setTimeout(r, 150));
+
+      const element = document.getElementById('resume-document-pdf-area');
+      if (!element) {
+        window.print();
+        return;
+      }
+
+      const candidateName = parsedProfile.name
+        ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
+        : 'Candidate';
+      const resumeTitle = targetResume.title.trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `${candidateName}_${resumeTitle}.pdf`;
+
+      // Dynamically load html2pdf.js for client-side PDF compilation
+      // @ts-ignore
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = html2pdfModule.default || html2pdfModule;
+
+      const opt = {
+        margin: 0.25,
+        filename: filename,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          windowWidth: 850
+        },
+        jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error('Client-side PDF generation error:', err);
+      window.print();
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
   const [jobDescription, setJobDescription] = useState('');
   const [viewingJobDescription, setViewingJobDescription] = useState<JobRecord | null>(null);
   const [viewingAtsAnalysisJob, setViewingAtsAnalysisJob] = useState<JobRecord | null>(null);
@@ -2056,16 +2109,17 @@ export default function App() {
                                   <span>Edit</span>
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setActiveResumeId(r.id);
-                                    setTimeout(() => window.print(), 100);
+                                    handleDownloadPdf(r);
                                   }}
-                                  className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold"
-                                  title="Export Resume as PDF"
+                                  disabled={isGeneratingPdf}
+                                  className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold disabled:opacity-50"
+                                  title="Download Resume as PDF File"
                                 >
                                   <Download className="w-3 h-3" />
-                                  <span>PDF</span>
+                                  <span>{isGeneratingPdf ? 'Compiling...' : 'PDF'}</span>
                                 </button>
                               </div>
                             </div>
@@ -2083,9 +2137,22 @@ export default function App() {
                       <Eye className="w-4 h-4 text-indigo-400" />
                       <span>Live ATS Resume Preview</span>
                     </span>
-                    <span className="text-[11px] text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded font-mono border border-indigo-900">
-                      {activeResume ? activeResume.title : 'No Resume Selected'}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded font-mono border border-indigo-900">
+                        {activeResume ? activeResume.title : 'No Resume Selected'}
+                      </span>
+                      {activeResume && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPdf(activeResume)}
+                          disabled={isGeneratingPdf}
+                          className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-3 py-1 rounded-lg shadow-md transition disabled:opacity-50"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF File'}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {!activeResume || resumes.length === 0 ? (
@@ -2109,6 +2176,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div 
+                      id="resume-document-pdf-area"
                       className="p-6 sm:p-8 rounded-b-xl shadow-2xl border border-slate-300 space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all"
                       style={{
                         backgroundColor: activeStyle.theme.bgColor,
