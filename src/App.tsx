@@ -50,8 +50,10 @@ import {
   signOut,
   isFirebaseConfigured,
   saveUserDataToFirestore,
-  loadUserDataFromFirestore
+  loadUserDataFromFirestore,
+  addDebugLog
 } from './firebase';
+import { AuthDebugDrawer } from './components/AuthDebugDrawer';
 
 const formatBulletText = (b: any): string => {
   if (!b) return '';
@@ -136,18 +138,23 @@ export default function App() {
   // Observe Firebase Auth State with persistent session restore
   useEffect(() => {
     if (isFirebaseConfigured) {
+      addDebugLog('info', 'Subscribing to onAuthStateChanged...');
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user);
         setIsAuthLoading(false);
         if (user) {
+          addDebugLog('success', `onAuthStateChanged: Active user session for ${user.email || user.uid}`);
           setViewMode('app');
           try {
             localStorage.setItem('rt_view_mode', 'app');
           } catch (e) {}
+        } else {
+          addDebugLog('warn', 'onAuthStateChanged: User session is null.');
         }
       });
       return () => unsubscribe();
     } else {
+      addDebugLog('warn', 'isFirebaseConfigured is FALSE in App useEffect.');
       setIsAuthLoading(false);
     }
   }, []);
@@ -3640,6 +3647,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* On-Screen Live Diagnostics Drawer */}
+      <AuthDebugDrawer currentUser={currentUser} isAuthLoading={isAuthLoading} viewMode={viewMode} />
     </div>
   );
 }

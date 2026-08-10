@@ -16,6 +16,26 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { MasterProfile, ResumeItem, JobRecord, ResumeStyle } from './types';
 
+export interface DebugLogEntry {
+  time: string;
+  type: 'info' | 'warn' | 'error' | 'success';
+  message: string;
+  data?: any;
+}
+
+export const debugLogs: DebugLogEntry[] = [];
+
+export function addDebugLog(type: 'info' | 'warn' | 'error' | 'success', message: string, data?: any) {
+  const entry: DebugLogEntry = {
+    time: new Date().toLocaleTimeString(),
+    type,
+    message,
+    data: data ? (typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data)) : undefined
+  };
+  debugLogs.unshift(entry);
+  console.log(`[DEBUG ${type.toUpperCase()}] ${message}`, data || '');
+}
+
 const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-app';
 const defaultAuthDomain = projectId !== 'demo-app' ? `${projectId}.firebaseapp.com` : 'demo-app.firebaseapp.com';
@@ -29,7 +49,7 @@ const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (
 
 const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (projectId !== 'demo-app' ? `${projectId}.appspot.com` : 'demo-app.appspot.com');
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
   authDomain,
   projectId,
@@ -43,6 +63,8 @@ export const isFirebaseConfigured = Boolean(
   import.meta.env.VITE_FIREBASE_API_KEY !== 'demo-api-key' && 
   import.meta.env.VITE_FIREBASE_PROJECT_ID
 );
+
+addDebugLog('info', `Firebase Init: host="${currentHostname}", authDomain="${authDomain}", projectId="${projectId}", isConfigured=${isFirebaseConfigured}`);
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);

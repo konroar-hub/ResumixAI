@@ -29,8 +29,10 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   isFirebaseConfigured,
+  addDebugLog,
   User
 } from '../firebase';
+import { AuthDebugDrawer } from './AuthDebugDrawer';
 
 interface SplashPageProps {
   onEnterApp: () => void;
@@ -49,12 +51,16 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
   // Handle redirect result if popup was blocked and app fell back to full-page redirect
   React.useEffect(() => {
     if (isFirebaseConfigured) {
+      addDebugLog('info', 'Checking getRedirectResult on mount...');
       getRedirectResult(auth).then((result) => {
         if (result?.user) {
+          addDebugLog('success', `getRedirectResult: Authenticated as ${result.user.email || result.user.uid}`);
           onEnterApp();
+        } else {
+          addDebugLog('info', 'getRedirectResult: No pending redirect user payload.');
         }
       }).catch(err => {
-        console.warn('Redirect authentication notice:', err);
+        addDebugLog('error', `getRedirectResult error: [${err?.code}] ${err?.message}`, err);
       });
     }
   }, [onEnterApp]);
@@ -64,20 +70,24 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
     setIsAuthLoading(true);
 
     if (!isFirebaseConfigured) {
+      addDebugLog('warn', 'isFirebaseConfigured is FALSE. Bypassing auth.');
       onEnterApp();
       return;
     }
+
+    addDebugLog('info', `Attempting signInWithPopup (authDomain=${auth.config?.authDomain || 'default'})`);
 
     // Call signInWithPopup synchronously within the exact user click event loop
     signInWithPopup(auth, googleProvider)
       .then((result) => {
         if (result?.user) {
+          addDebugLog('success', `signInWithPopup SUCCESS: Logged in as ${result.user.email || result.user.uid}`);
           setIsAuthModalOpen(false);
           onEnterApp();
         }
       })
       .catch((err: any) => {
-        console.warn('Google Sign-in popup notice:', err?.code, err?.message);
+        addDebugLog('error', `signInWithPopup FAILED: [${err?.code}] ${err?.message}`, err);
         setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
         if (
           err?.code === 'auth/popup-blocked' ||
@@ -85,7 +95,9 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
           err?.code === 'auth/cancelled-popup-request' ||
           err?.message?.includes('popup')
         ) {
+          addDebugLog('warn', 'Popup blocked or closed. Falling back to signInWithRedirect...');
           signInWithRedirect(auth, googleProvider).catch((redirectErr: any) => {
+            addDebugLog('error', `signInWithRedirect FAILED: [${redirectErr?.code}] ${redirectErr?.message}`, redirectErr);
             setAuthError(`[${redirectErr?.code || 'REDIRECT_ERROR'}]: ${redirectErr?.message || 'Failed to redirect for Google Sign-in'}`);
           });
         }
@@ -112,15 +124,17 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
         return;
       }
 
+      addDebugLog('info', `Attempting ${authMode} for email="${email}"...`);
       if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
+      addDebugLog('success', `Email ${authMode} SUCCESS`);
       setIsAuthModalOpen(false);
       onEnterApp();
     } catch (err: any) {
-      console.error('Email Auth error:', err?.code, err?.message);
+      addDebugLog('error', `Email Auth ${authMode} FAILED: [${err?.code}] ${err?.message}`, err);
       setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || `Failed to ${authMode}`}`);
     } finally {
       setIsAuthLoading(false);
@@ -500,6 +514,8 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
           </div>
         </div>
       )}
+      {/* On-Screen Live Debugging Console */}
+      <AuthDebugDrawer currentUser={currentUser} isAuthLoading={isAuthLoading} viewMode="splash" />
     </div>
   );
 };
