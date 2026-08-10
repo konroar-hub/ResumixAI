@@ -416,6 +416,8 @@ export default function App() {
       const html2pdfModule = await import('html2pdf.js');
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
+      const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+
       const opt = {
         margin: [0, 0, 0, 0] as [number, number, number, number],
         filename: filename,
@@ -425,7 +427,7 @@ export default function App() {
           useCORS: true,
           logging: false,
           letterRendering: false,
-          foreignObjectRendering: false,
+          foreignObjectRendering: isMobileDevice,
           scrollX: 0,
           scrollY: 0
         },
