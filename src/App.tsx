@@ -326,11 +326,265 @@ export default function App() {
 
   // Stage 2 Card Selection Wizard State (Skills is after Education)
   const SECTION_ORDER: CardCategory[] = ['about', 'experience', 'project', 'education', 'skills'];
+
+  function MiniResumeDocumentTile({ 
+    style, 
+    profileName, 
+    profileTitle, 
+    className = "w-36 h-48" 
+  }: { 
+    style: ResumeStyle; 
+    profileName?: string; 
+    profileTitle?: string; 
+    className?: string; 
+  }) {
+    const theme = style.theme;
+    const name = profileName || 'KONSTANTIN VICTORIA';
+    const title = profileTitle || 'Machine Learning Engineer';
+    const fontFamily = theme.fontFamily === 'serif' || theme.fontFamily === 'playfair' ? 'Georgia, serif' : theme.fontFamily === 'mono' ? 'Courier New, monospace' : theme.fontFamily === 'outfit' || theme.fontFamily === 'space-grotesk' ? 'Outfit, sans-serif' : 'Inter, sans-serif';
+
+    return (
+      <div 
+        className={`rounded-xl p-2 flex flex-col justify-between border shadow-md relative overflow-hidden transition-all text-left pointer-events-none select-none ${className}`}
+        style={{ 
+          backgroundColor: theme.bgColor, 
+          color: theme.textColor,
+          fontFamily,
+          borderColor: theme.dividerColor 
+        }}
+      >
+        {/* Brand Margin Stripe */}
+        {theme.layout === 'brand-margin-stripe' && (
+          <div 
+            className="absolute top-0 bottom-0 left-0 w-1.5" 
+            style={{ backgroundColor: theme.stripeColor || theme.primaryColor }}
+          />
+        )}
+
+        <div className={`space-y-1 ${theme.layout === 'brand-margin-stripe' ? 'pl-1.5' : ''}`}>
+          {/* Header Section */}
+          {theme.headerAlignment === 'split-right' ? (
+            <div 
+              className={`pb-1 border-b flex justify-between items-start text-[6px] ${theme.headerBgColor ? 'p-1 rounded mb-1' : ''}`}
+              style={{ 
+                borderColor: theme.dividerColor, 
+                backgroundColor: theme.headerBgColor || 'transparent' 
+              }}
+            >
+              <div>
+                <div className="font-bold uppercase tracking-tight text-[6.5px]" style={{ color: theme.headerTextColor || theme.primaryColor }}>
+                  {name}
+                </div>
+                <div className="font-semibold text-[5px]" style={{ color: theme.headerTextColor || theme.secondaryColor }}>
+                  {title}
+                </div>
+              </div>
+              <div className="text-right text-[4px] opacity-75 leading-tight" style={{ color: theme.headerTextColor || theme.textColor }}>
+                <div>konstantin@email.com</div>
+                <div>(415) 889-0008</div>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className={`pb-1 border-b text-[6px] ${
+                theme.headerAlignment === 'left' ? 'text-left' :
+                theme.headerAlignment === 'right' ? 'text-right' : 'center'
+              } ${theme.headerBgColor ? 'p-1 rounded mb-1' : ''}`}
+              style={{ 
+                borderColor: theme.dividerColor, 
+                backgroundColor: theme.headerBgColor || 'transparent' 
+              }}
+            >
+              <div className="font-bold uppercase tracking-tight text-[6.5px]" style={{ color: theme.headerTextColor || theme.primaryColor }}>
+                {name}
+              </div>
+              <div className="font-semibold text-[5px]" style={{ color: theme.headerTextColor || theme.secondaryColor }}>
+                {title}
+              </div>
+              <div className="text-[4px] opacity-75 mt-0.5" style={{ color: theme.headerTextColor || theme.textColor }}>
+                konstantin@email.com • (415) 889-0008
+              </div>
+            </div>
+          )}
+
+          {/* Layout Body Renderer */}
+          {theme.layout === 'sidebar-left' ? (
+            <div className="grid grid-cols-12 gap-1 text-[5px]">
+              {/* Left Sidebar */}
+              <div 
+                className="col-span-4 p-1 rounded space-y-1 border text-[4px]" 
+                style={{ backgroundColor: theme.sidebarBgColor || theme.bgColor, borderColor: theme.dividerColor }}
+              >
+                <div>
+                  <div className="font-bold uppercase tracking-wider border-b pb-0.2" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                    About
+                  </div>
+                  <p className="leading-tight opacity-90 mt-0.5" style={{ color: theme.textColor }}>
+                    ML Engineer building high-throughput services.
+                  </p>
+                </div>
+                <div>
+                  <div className="font-bold uppercase tracking-wider border-b pb-0.2" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                    Skills
+                  </div>
+                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                    {['Python', 'C++', 'Ray', 'AWS'].map(sk => (
+                      <span key={sk} className="px-0.5 py-0.2 rounded font-mono border text-[3.5px]" style={{ borderColor: theme.dividerColor, color: theme.textColor }}>
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Main Column */}
+              <div className="col-span-8 space-y-1">
+                <div className="font-bold uppercase border-b text-[5px]" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                  Experience
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex justify-between items-baseline font-bold text-[5px]">
+                    <span>ML Engineer</span>
+                    <span className="opacity-70 text-[4px]" style={{ color: theme.secondaryColor }}>Shovels '23</span>
+                  </div>
+                  <div className="text-[4px] leading-tight opacity-90">
+                    • Built API Gateway cutting query latency to &lt;2s.
+                  </div>
+                </div>
+                <div className="space-y-0.5 pt-0.5">
+                  <div className="flex justify-between items-baseline font-bold text-[5px]">
+                    <span>Lead Developer</span>
+                    <span className="opacity-70 text-[4px]" style={{ color: theme.secondaryColor }}>LavaLab '21</span>
+                  </div>
+                  <div className="text-[4px] leading-tight opacity-90">
+                    • Developed resilient AWS Lambda microservices.
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : theme.layout === 'sidebar-right' ? (
+            <div className="grid grid-cols-12 gap-1 text-[5px]">
+              {/* Left Main Column */}
+              <div className="col-span-8 space-y-1">
+                <div className="font-bold uppercase border-b text-[5px]" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                  Experience
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex justify-between items-baseline font-bold text-[5px]">
+                    <span>ML Engineer</span>
+                    <span className="opacity-70 text-[4px]" style={{ color: theme.secondaryColor }}>Shovels '23</span>
+                  </div>
+                  <div className="text-[4px] leading-tight opacity-90">
+                    • Built API Gateway cutting query latency to &lt;2s.
+                  </div>
+                </div>
+                <div className="space-y-0.5 pt-0.5">
+                  <div className="flex justify-between items-baseline font-bold text-[5px]">
+                    <span>Lead Developer</span>
+                    <span className="opacity-70 text-[4px]" style={{ color: theme.secondaryColor }}>LavaLab '21</span>
+                  </div>
+                  <div className="text-[4px] leading-tight opacity-90">
+                    • Developed resilient AWS Lambda microservices.
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Sidebar */}
+              <div 
+                className="col-span-4 p-1 rounded space-y-1 border text-[4px]" 
+                style={{ backgroundColor: theme.sidebarBgColor || theme.bgColor, borderColor: theme.dividerColor }}
+              >
+                <div>
+                  <div className="font-bold uppercase tracking-wider border-b pb-0.2" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                    Skills
+                  </div>
+                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                    {['Python', 'C++', 'Ray', 'AWS'].map(sk => (
+                      <span key={sk} className="px-0.5 py-0.2 rounded font-mono border text-[3.5px]" style={{ borderColor: theme.dividerColor, color: theme.textColor }}>
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-bold uppercase tracking-wider border-b pb-0.2" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                    About
+                  </div>
+                  <p className="leading-tight opacity-90 mt-0.5" style={{ color: theme.textColor }}>
+                    ML Engineer building high-throughput services.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1 text-[5px]">
+              {/* About */}
+              <div>
+                <div className="font-bold uppercase border-b text-[5px]" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                  About Me
+                </div>
+                <p className="text-[4px] leading-tight opacity-90 mt-0.5">
+                  Versatile Software Engineer with background in Applied Math &amp; ML systems automation.
+                </p>
+              </div>
+
+              {/* Skills */}
+              <div>
+                <div className="font-bold uppercase border-b text-[5px]" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                  Skills
+                </div>
+                {theme.skillsDisplayStyle === 'pill-badges' ? (
+                  <div className="flex flex-wrap gap-0.5 mt-0.5">
+                    {['Python', 'TypeScript', 'C++', 'AWS', 'Ray'].map(sk => (
+                      <span key={sk} className="px-1 py-0.2 rounded-full font-mono text-[3.5px] border" style={{ borderColor: theme.dividerColor, backgroundColor: theme.cardBgColor || theme.bgColor }}>
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[4px] font-mono opacity-90 mt-0.5">
+                    Python • TypeScript • C++ • AWS • Ray • MySQL
+                  </div>
+                )}
+              </div>
+
+              {/* Experience */}
+              <div className="space-y-0.5">
+                <div className="font-bold uppercase border-b text-[5px]" style={{ borderColor: theme.dividerColor, color: theme.primaryColor }}>
+                  Experience
+                </div>
+                <div className={`space-y-0.5 ${theme.layout === 'cards-modern' ? 'p-1 rounded border shadow-xs' : ''}`} style={{ backgroundColor: theme.layout === 'cards-modern' ? (theme.cardBgColor || theme.bgColor) : 'transparent', borderColor: theme.dividerColor }}>
+                  <div className="flex justify-between items-baseline font-bold text-[5px]">
+                    <span>Machine Learning Engineer (Intern)</span>
+                    <span className="opacity-70 text-[4px]" style={{ color: theme.secondaryColor }}>Shovels '23</span>
+                  </div>
+                  <div className="text-[4px] leading-tight opacity-90">
+                    • Architected custom API gateway cutting query latency to &lt;2s.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Title Badge */}
+        <div 
+          className="pt-1 border-t text-[7.5px] font-bold truncate flex items-center justify-between mt-auto"
+          style={{ borderColor: theme.dividerColor, color: theme.textColor }}
+        >
+          <span className="truncate">{style.name}</span>
+          <span className="text-[6px] opacity-70 font-mono shrink-0 ml-1">
+            {style.isAiGenerated ? '✨ AI' : theme.layout}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   const [wizardCategoryIndex, setWizardCategoryIndex] = useState<number>(0);
   const [wizardSelectedExpIds, setWizardSelectedExpIds] = useState<Set<string>>(new Set());
   const [wizardExtraSkills, setWizardExtraSkills] = useState<Set<string>>(new Set());
   const [customWizardSkillInput, setCustomWizardSkillInput] = useState('');
-
   // Skills Bank Search & Add State
   const [skillsSearchQuery, setSkillsSearchQuery] = useState('');
   const [newSkillName, setNewSkillName] = useState('');
@@ -1177,22 +1431,26 @@ export default function App() {
                         <div
                           key={st.id}
                           onClick={() => setActiveStyleId(st.id)}
-                          className={`cursor-pointer group relative w-36 h-44 rounded-xl p-2.5 flex flex-col justify-between border-2 transition-all shadow-md ${
-                            isActive
-                              ? 'border-indigo-500 ring-2 ring-indigo-500/40 scale-[1.02] shadow-indigo-950/60'
-                              : 'border-slate-800 hover:border-slate-700 bg-slate-950/60 opacity-80 hover:opacity-100'
+                          className={`cursor-pointer group relative transition-all ${
+                            isActive ? 'ring-2 ring-indigo-500 scale-[1.03] shadow-xl' : 'opacity-90 hover:opacity-100'
                           }`}
-                          style={{ backgroundColor: st.theme.bgColor }}
                         >
+                          <MiniResumeDocumentTile 
+                            style={st} 
+                            profileName={parsedProfile.name}
+                            profileTitle={parsedProfile.title}
+                            className="w-40 h-52"
+                          />
+
                           {/* Edit & Delete Action Controls on Hover */}
-                          <div className="absolute top-1.5 right-1.5 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition z-10">
+                          <div className="absolute top-2 right-2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition z-10">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openEditResumeStyleModal(st);
                               }}
-                              className="p-1 bg-slate-900/90 hover:bg-indigo-900/90 text-slate-300 hover:text-indigo-200 rounded-md transition border border-slate-700/60"
+                              className="p-1 bg-slate-900/90 hover:bg-indigo-900/90 text-slate-300 hover:text-indigo-200 rounded-md transition border border-slate-700/60 shadow"
                               title="Edit & Refine Style Design with AI"
                             >
                               <Edit3 className="w-3 h-3" />
@@ -1204,7 +1462,7 @@ export default function App() {
                                   e.stopPropagation();
                                   deleteResumeStyle(st.id);
                                 }}
-                                className="p-1 bg-slate-900/90 hover:bg-rose-900/90 text-slate-400 hover:text-rose-200 rounded-md transition border border-slate-700/60"
+                                className="p-1 bg-slate-900/90 hover:bg-rose-900/90 text-slate-400 hover:text-rose-200 rounded-md transition border border-slate-700/60 shadow"
                                 title="Delete Resume Style"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -1212,36 +1470,8 @@ export default function App() {
                             )}
                           </div>
 
-                          {/* Tile Header & Mini Preview lines */}
-                          <div className="space-y-1.5">
-                            <div
-                              className="h-3 rounded flex items-center px-1.5 text-[7px] font-bold truncate"
-                              style={{ backgroundColor: st.theme.primaryColor, color: '#ffffff' }}
-                            >
-                              {st.name}
-                            </div>
-
-                            <div className="space-y-1 pt-1 opacity-70">
-                              <div className="h-1 w-3/4 rounded" style={{ backgroundColor: st.theme.textColor }} />
-                              <div className="h-1 w-1/2 rounded" style={{ backgroundColor: st.theme.accentColor }} />
-                              <div className="h-1 w-full rounded" style={{ backgroundColor: st.theme.dividerColor }} />
-                              <div className="h-1.5 w-5/6 rounded mt-1" style={{ backgroundColor: st.theme.primaryColor }} />
-                              <div className="h-1 w-2/3 rounded" style={{ backgroundColor: st.theme.textColor }} />
-                            </div>
-                          </div>
-
-                          {/* Tile Footer Info */}
-                          <div className="pt-1.5 border-t border-slate-200/20 text-[9px] space-y-0.5">
-                            <div className="font-bold truncate" style={{ color: st.theme.textColor }}>
-                              {st.name}
-                            </div>
-                            <div className="text-[8px] opacity-70 truncate" style={{ color: st.theme.textColor }}>
-                              {st.isAiGenerated ? '✨ AI Custom' : st.theme.fontFamily}
-                            </div>
-                          </div>
-
                           {isActive && (
-                            <span className="absolute -top-2 -right-1 bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border border-indigo-400">
+                            <span className="absolute -top-2 -right-1 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow border border-indigo-400 z-10">
                               ✓ Active
                             </span>
                           )}
@@ -3233,51 +3463,17 @@ export default function App() {
               {/* Left Side: Live Style Document Tile Preview Box */}
               <div className="lg:col-span-5 bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col items-center justify-center space-y-3">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider self-start">
-                  Style Document Tile Preview
+                  Live Mini Document Preview
                 </span>
 
-                <div
-                  className="w-48 h-64 rounded-xl p-4 flex flex-col justify-between border-2 shadow-2xl transition-all relative overflow-hidden"
-                  style={{
-                    backgroundColor: (previewAiStyle || activeStyle).theme.bgColor,
-                    borderColor: (previewAiStyle || activeStyle).theme.primaryColor
-                  }}
-                >
-                  {/* Header Mini */}
-                  <div className="space-y-2">
-                    <div
-                      className="p-2 rounded text-center"
-                      style={{
-                        backgroundColor: (previewAiStyle || activeStyle).theme.headerBgColor || (previewAiStyle || activeStyle).theme.primaryColor,
-                        color: (previewAiStyle || activeStyle).theme.headerBgColor ? (previewAiStyle || activeStyle).theme.textColor : '#ffffff'
-                      }}
-                    >
-                      <div className="text-[10px] font-bold truncate" style={{ color: (previewAiStyle || activeStyle).theme.headerBgColor ? (previewAiStyle || activeStyle).theme.textColor : '#ffffff' }}>
-                        {parsedProfile.name || 'Candidate Name'}
-                      </div>
-                      <div className="text-[7px] opacity-80 truncate">
-                        {parsedProfile.title || 'Target Role Title'}
-                      </div>
-                    </div>
+                <MiniResumeDocumentTile 
+                  style={previewAiStyle || activeStyle}
+                  profileName={parsedProfile.name}
+                  profileTitle={parsedProfile.title}
+                  className="w-52 h-72 shadow-2xl"
+                />
 
-                    {/* Skeleton Lines with accent color */}
-                    <div className="space-y-1.5 pt-1">
-                      <div className="h-1 w-full rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.dividerColor }} />
-                      <div className="h-1.5 w-1/2 rounded font-bold" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.primaryColor }} />
-                      <div className="h-1 w-5/6 rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
-                      <div className="h-1 w-4/5 rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
-                      <div className="h-1.5 w-2/3 rounded font-bold" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.secondaryColor }} />
-                      <div className="h-1 w-full rounded" style={{ backgroundColor: (previewAiStyle || activeStyle).theme.textColor }} />
-                    </div>
-                  </div>
-
-                  {/* Bottom Badge */}
-                  <div className="pt-2 border-t text-center text-[9px] font-bold" style={{ borderColor: (previewAiStyle || activeStyle).theme.dividerColor, color: (previewAiStyle || activeStyle).theme.textColor }}>
-                    {(previewAiStyle || activeStyle).name}
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-400 text-center italic max-w-xs">
+                <p className="text-[11px] text-slate-400 text-center italic max-w-xs pt-1">
                   {previewAiStyle ? `Generated: ${previewAiStyle.description}` : 'Enter your design instructions on the right to generate a custom theme.'}
                 </p>
               </div>
