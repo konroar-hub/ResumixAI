@@ -433,6 +433,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
             )}
 
             <button
+              type="button"
               onClick={handleGoogleSignIn}
               disabled={isAuthLoading}
               className="w-full bg-slate-950 hover:bg-slate-850 text-slate-100 border border-slate-800 font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center space-x-2"
