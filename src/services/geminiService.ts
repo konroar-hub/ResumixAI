@@ -434,8 +434,98 @@ Your output MUST be JSON ONLY matching this exact structure:
         layout: 'single-column',
         borderStyle: 'solid',
         dividerColor: '#e2e8f0',
-        sectionHeaderStyle: 'uppercase-accent'
+        sectionHeaderStyle: 'clean-underline'
       }
     };
+  }
+}
+
+export async function refineResumeStyleWithGemini(
+  existingStyle: ResumeStyle,
+  userRefinementPrompt: string
+): Promise<ResumeStyle> {
+  if (!ai) {
+    throw new Error("Gemini AI API Key not configured");
+  }
+
+  try {
+    const prompt = `You are a world-class executive resume designer. Refine an existing resume design style based on the user's modifications.
+
+Existing Resume Style:
+Name: ${existingStyle.name}
+Description: ${existingStyle.description}
+Current Theme Configuration: ${JSON.stringify(existingStyle.theme, null, 2)}
+
+User Refinement Instructions:
+"${userRefinementPrompt}"
+
+Output ONLY a JSON object:
+{
+  "name": "Updated theme name reflecting refinements",
+  "description": "Short 1-sentence summary of updated design aesthetic",
+  "theme": {
+    "primaryColor": "#HEX",
+    "secondaryColor": "#HEX",
+    "textColor": "#HEX",
+    "bgColor": "#HEX",
+    "headerBgColor": "#HEX",
+    "headerTextColor": "#HEX",
+    "headerAlignment": "center" | "left" | "right" | "split-right",
+    "headerStyle": "minimal" | "banner-filled" | "left-accent-border" | "top-bottom-border" | "pills-banner",
+    "sidebarBgColor": "#HEX",
+    "cardBgColor": "#HEX",
+    "stripeColor": "#HEX",
+    "accentColor": "#HEX",
+    "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
+    "layout": "single-column" | "sidebar-left" | "sidebar-right" | "header-banner" | "cards-modern" | "brand-margin-stripe",
+    "borderStyle": "solid" | "dashed" | "none" | "double",
+    "dividerColor": "#HEX",
+    "sectionHeaderStyle": "clean-underline" | "filled-badge" | "uppercase-accent" | "minimal-left-border" | "pill-badge" | "gradient-bar",
+    "skillsDisplayStyle": "comma-separated" | "pill-badges" | "bulleted-grid"
+  }
+}`;
+
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    const validFont = ['inter', 'roboto', 'serif', 'mono', 'outfit', 'playfair', 'space-grotesk'].includes(parsed.theme?.fontFamily) ? parsed.theme.fontFamily : existingStyle.theme.fontFamily;
+    const validLayout = ['single-column', 'sidebar-left', 'sidebar-right', 'header-banner', 'cards-modern', 'brand-margin-stripe'].includes(parsed.theme?.layout) ? parsed.theme.layout : existingStyle.theme.layout;
+    const validHeaderStyle = ['clean-underline', 'filled-badge', 'uppercase-accent', 'minimal-left-border', 'pill-badge', 'gradient-bar'].includes(parsed.theme?.sectionHeaderStyle) ? parsed.theme.sectionHeaderStyle : existingStyle.theme.sectionHeaderStyle;
+    const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : (existingStyle.theme.headerAlignment || 'left');
+    const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : (existingStyle.theme.skillsDisplayStyle || 'pill-badges');
+
+    return {
+      id: existingStyle.id,
+      name: parsed.name || existingStyle.name,
+      description: parsed.description || userRefinementPrompt,
+      isAiGenerated: true,
+      theme: {
+        primaryColor: parsed.theme?.primaryColor || existingStyle.theme.primaryColor,
+        secondaryColor: parsed.theme?.secondaryColor || existingStyle.theme.secondaryColor,
+        textColor: parsed.theme?.textColor || existingStyle.theme.textColor,
+        bgColor: parsed.theme?.bgColor || existingStyle.theme.bgColor,
+        headerBgColor: parsed.theme?.headerBgColor !== undefined ? parsed.theme.headerBgColor : existingStyle.theme.headerBgColor,
+        headerTextColor: parsed.theme?.headerTextColor !== undefined ? parsed.theme.headerTextColor : existingStyle.theme.headerTextColor,
+        headerAlignment: validHeaderAlignment,
+        headerStyle: parsed.theme?.headerStyle || existingStyle.theme.headerStyle || 'minimal',
+        sidebarBgColor: parsed.theme?.sidebarBgColor !== undefined ? parsed.theme.sidebarBgColor : existingStyle.theme.sidebarBgColor,
+        cardBgColor: parsed.theme?.cardBgColor !== undefined ? parsed.theme.cardBgColor : existingStyle.theme.cardBgColor,
+        stripeColor: parsed.theme?.stripeColor || parsed.theme?.primaryColor || existingStyle.theme.stripeColor || existingStyle.theme.primaryColor,
+        accentColor: parsed.theme?.accentColor || existingStyle.theme.accentColor,
+        fontFamily: validFont,
+        layout: validLayout,
+        borderStyle: 'solid',
+        dividerColor: parsed.theme?.dividerColor || existingStyle.theme.dividerColor,
+        sectionHeaderStyle: validHeaderStyle,
+        skillsDisplayStyle: validSkillsStyle
+      }
+    };
+  } catch (error) {
+    console.error('Gemini Resume Style Refinement error:', error);
+    return existingStyle;
   }
 }

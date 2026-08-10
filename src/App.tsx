@@ -40,7 +40,8 @@ import {
   convertResumeTextToYamlWithGemini,
   enhanceBulletWithGemini,
   analyzeJobMatchWithGemini,
-  generateResumeStyleWithGemini
+  generateResumeStyleWithGemini,
+  refineResumeStyleWithGemini
 } from './services/geminiService';
 import {
   auth,
@@ -188,6 +189,21 @@ export default function App() {
   const [aiStylePromptInput, setAiStylePromptInput] = useState('');
   const [isGeneratingAiStyle, setIsGeneratingAiStyle] = useState(false);
   const [previewAiStyle, setPreviewAiStyle] = useState<ResumeStyle | null>(null);
+  const [editingStyle, setEditingStyle] = useState<ResumeStyle | null>(null);
+
+  const openCreateResumeStyleModal = () => {
+    setEditingStyle(null);
+    setAiStylePromptInput('');
+    setPreviewAiStyle(null);
+    setIsAiStyleModalOpen(true);
+  };
+
+  const openEditResumeStyleModal = (style: ResumeStyle) => {
+    setEditingStyle(style);
+    setAiStylePromptInput('');
+    setPreviewAiStyle(style);
+    setIsAiStyleModalOpen(true);
+  };
 
   const activeStyle = useMemo(() => {
     return resumeStyles.find(s => s.id === activeStyleId) || resumeStyles[0] || DEFAULT_RESUME_STYLES[0];
@@ -1144,11 +1160,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setAiStylePromptInput('');
-                      setPreviewAiStyle(null);
-                      setIsAiStyleModalOpen(true);
-                    }}
+                    onClick={openCreateResumeStyleModal}
                     className="flex items-center space-x-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow transition shrink-0"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-purple-300" />
@@ -1172,19 +1184,33 @@ export default function App() {
                           }`}
                           style={{ backgroundColor: st.theme.bgColor }}
                         >
-                          {resumeStyles.length > 1 && (
+                          {/* Edit & Delete Action Controls on Hover */}
+                          <div className="absolute top-1.5 right-1.5 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition z-10">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteResumeStyle(st.id);
+                                openEditResumeStyleModal(st);
                               }}
-                              className="absolute top-1.5 right-1.5 p-1 bg-slate-900/80 hover:bg-rose-900/90 text-slate-400 hover:text-rose-200 rounded-md transition border border-slate-700/50 opacity-0 group-hover:opacity-100 z-10"
-                              title="Delete Resume Style"
+                              className="p-1 bg-slate-900/90 hover:bg-indigo-900/90 text-slate-300 hover:text-indigo-200 rounded-md transition border border-slate-700/60"
+                              title="Edit & Refine Style Design with AI"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Edit3 className="w-3 h-3" />
                             </button>
-                          )}
+                            {resumeStyles.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteResumeStyle(st.id);
+                                }}
+                                className="p-1 bg-slate-900/90 hover:bg-rose-900/90 text-slate-400 hover:text-rose-200 rounded-md transition border border-slate-700/60"
+                                title="Delete Resume Style"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
 
                           {/* Tile Header & Mini Preview lines */}
                           <div className="space-y-1.5">
@@ -3188,7 +3214,9 @@ export default function App() {
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
                 <Palette className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-base sm:text-lg font-bold text-white">Create Custom AI Resume Style</h3>
+                <h3 className="text-base sm:text-lg font-bold text-white">
+                  {editingStyle ? `Refine & Edit Resume Style: ${editingStyle.name}` : 'Create Custom AI Resume Style'}
+                </h3>
                 <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded-full font-mono">
                   ✨ Gemini AI Powered
                 </span>
@@ -3259,28 +3287,39 @@ export default function App() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-200 mb-1">
-                      AI Design Instruction & Aesthetic Prompt:
+                      {editingStyle ? 'AI Design Refinement Instruction & Prompt:' : 'AI Design Instruction & Aesthetic Prompt:'}
                     </label>
                     <textarea
                       value={aiStylePromptInput}
                       onChange={(e) => setAiStylePromptInput(e.target.value)}
-                      placeholder="Describe your ideal resume aesthetic... (e.g., 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects')"
+                      placeholder={
+                        editingStyle
+                          ? `Describe your refinements for "${editingStyle.name}"... (e.g. 'Make the header background dark navy #0f172a, switch font to Space Grotesk, and display skills as pill badges')`
+                          : "Describe your ideal resume aesthetic... (e.g., 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects')"
+                      }
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-32 resize-none font-sans leading-relaxed"
                     />
                   </div>
 
-                  {/* Curated Suggested Prompts for Radically Different Layouts */}
+                  {/* Curated Suggested Prompts */}
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-medium text-slate-400">Curated Suggested Layout Prompts:</label>
+                    <label className="block text-[11px] font-medium text-slate-400">
+                      {editingStyle ? 'Quick Refinement Prompts:' : 'Curated Suggested Layout Prompts:'}
+                    </label>
                     <div className="flex flex-wrap gap-1.5">
-                      {[
+                      {(editingStyle ? [
+                        { label: '🎨 Coral Header Banner', prompt: 'Change header background color to rich coral #e25b4c with white text' },
+                        { label: '🏷️ Pill Badge Skills', prompt: 'Display technical skills as rounded pill badges with card background tint' },
+                        { label: '📐 Left Brand Stripe', prompt: 'Add a thick crimson left margin brand stripe with editorial serif headings' },
+                        { label: '⚡ Dark Navy Split-Right', prompt: 'Use split-right header alignment with dark navy header box #0f172a' }
+                      ] : [
                         { label: '🚀 Split Left Sidebar', prompt: 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects' },
                         { label: '💼 Right Column Metrics', prompt: 'Right Column Metrics: Clean slate background with dedicated right sidebar for Technical Skills & Core Competencies' },
                         { label: '🏛️ Harvard Serif Law', prompt: 'Executive Harvard Serif: Classic serif font, double crimson rule dividers, formal right-aligned dates' },
                         { label: '⚡ Cyberpunk Dark Mode', prompt: 'Cyberpunk Dark Mode: Neon purple & cyan glow accents on pitch black background with monospaced font' },
                         { label: '📐 Swiss Brand Margin', prompt: 'Minimalist Swiss Editorial: Bold oversize left headers with a thick crimson brand margin stripe down left edge' },
                         { label: '🎨 Modern Floating Cards', prompt: 'Cards & Floating Grid: Tinted violet background with white floating card blocks and pill badges' }
-                      ].map(item => (
+                      ]).map(item => (
                         <button
                           key={item.label}
                           type="button"
@@ -3330,10 +3369,15 @@ export default function App() {
                       if (!aiStylePromptInput.trim()) return;
                       setIsGeneratingAiStyle(true);
                       try {
-                        const newStyle = await generateResumeStyleWithGemini(aiStylePromptInput);
-                        setPreviewAiStyle(newStyle);
+                        if (editingStyle) {
+                          const refined = await refineResumeStyleWithGemini(previewAiStyle || editingStyle, aiStylePromptInput);
+                          setPreviewAiStyle(refined);
+                        } else {
+                          const newStyle = await generateResumeStyleWithGemini(aiStylePromptInput);
+                          setPreviewAiStyle(newStyle);
+                        }
                       } catch (e) {
-                        console.error('Generate AI Style Error:', e);
+                        console.error('Generate/Refine AI Style Error:', e);
                       } finally {
                         setIsGeneratingAiStyle(false);
                       }
@@ -3344,12 +3388,12 @@ export default function App() {
                     {isGeneratingAiStyle ? (
                       <>
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span>Gemini Designing Style...</span>
+                        <span>{editingStyle ? 'Gemini Refining Style...' : 'Gemini Designing Style...'}</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 text-purple-200" />
-                        <span>Generate AI Resume Style</span>
+                        <span>{editingStyle ? 'Refine Style with Gemini AI' : 'Generate AI Resume Style'}</span>
                       </>
                     )}
                   </button>
@@ -3358,13 +3402,18 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        setResumeStyles(prev => [previewAiStyle, ...prev]);
-                        setActiveStyleId(previewAiStyle.id);
+                        if (editingStyle) {
+                          setResumeStyles(prev => prev.map(s => s.id === editingStyle.id ? previewAiStyle : s));
+                          setActiveStyleId(editingStyle.id);
+                        } else {
+                          setResumeStyles(prev => [previewAiStyle, ...prev]);
+                          setActiveStyleId(previewAiStyle.id);
+                        }
                         setIsAiStyleModalOpen(false);
                       }}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-lg transition whitespace-nowrap"
                     >
-                      Save & Select Style ✓
+                      {editingStyle ? 'Update & Save Style ✓' : 'Save & Select Style ✓'}
                     </button>
                   )}
                 </div>
