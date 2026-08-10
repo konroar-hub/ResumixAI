@@ -162,31 +162,26 @@ export default function App() {
     setCurrentUser(null);
     setViewMode('splash');
     try {
+      localStorage.removeItem('rt_profile');
+      localStorage.removeItem('rt_resumes');
+      localStorage.removeItem('rt_jobs');
+      localStorage.removeItem('rt_styles');
       localStorage.setItem('rt_view_mode', 'splash');
     } catch (e) {}
+    // Purge memory state completely on sign out so no user data persists
+    setParsedProfile({ name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] });
+    setResumes([]);
+    setJobsList([]);
+    setActiveResumeId('');
   };
 
-  // LocalStorage Persisted Master Profile State
+  // User-scoped LocalStorage Initial State Loader
   const [parsedProfile, setParsedProfile] = useState<MasterProfile>(() => {
-    try {
-      const saved = localStorage.getItem('rt_profile');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    try {
-      return (yaml.load(INITIAL_MASTER_YAML) as MasterProfile) || { experiences: [] };
-    } catch (e) {
-      return { experiences: [] };
-    }
+    return { name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] };
   });
 
   // LocalStorage Persisted Resumes State
-  const [resumes, setResumes] = useState<ResumeItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('rt_resumes');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return INITIAL_RESUMES;
-  });
+  const [resumes, setResumes] = useState<ResumeItem[]>([]);
 
   const [activeResumeId, setActiveResumeId] = useState<string>(() => {
     return resumes.length > 0 ? resumes[0].id : '';
@@ -250,25 +245,38 @@ export default function App() {
   const [isCloudDataLoaded, setIsCloudDataLoaded] = useState(false);
   const [isCloudSaving, setIsCloudSaving] = useState(false);
 
-  // Load data from Firestore when user logs in, guarding against initial save overwrite
+  // Load data from Firestore when user logs in, enforcing strict account isolation
   useEffect(() => {
     if (currentUser?.uid) {
       setIsCloudDataLoaded(false);
       loadUserDataFromFirestore(currentUser.uid).then(cloudData => {
         if (cloudData) {
-          if (cloudData.profile && Array.isArray(cloudData.profile.experiences) && cloudData.profile.experiences.length > 0) {
+          if (cloudData.profile && Array.isArray(cloudData.profile.experiences)) {
             setParsedProfile(cloudData.profile);
+          } else {
+            setParsedProfile({ name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] });
           }
-          if (cloudData.resumes && cloudData.resumes.length > 0) {
+          if (cloudData.resumes && Array.isArray(cloudData.resumes)) {
             setResumes(cloudData.resumes);
-            setActiveResumeId(cloudData.resumes[0].id);
+            if (cloudData.resumes.length > 0) setActiveResumeId(cloudData.resumes[0].id);
+          } else {
+            setResumes([]);
+            setActiveResumeId('');
           }
-          if (cloudData.jobsList && cloudData.jobsList.length > 0) {
+          if (cloudData.jobsList && Array.isArray(cloudData.jobsList)) {
             setJobsList(cloudData.jobsList);
+          } else {
+            setJobsList([]);
           }
           if (cloudData.resumeStyles && cloudData.resumeStyles.length > 0) {
             setResumeStyles(cloudData.resumeStyles);
           }
+        } else {
+          // Brand New Firestore User -> Initialize 100% Clean Blank Profile & 0 Resumes
+          setParsedProfile({ name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] });
+          setResumes([]);
+          setJobsList([]);
+          setActiveResumeId('');
         }
         setIsCloudDataLoaded(true);
       }).catch(err => {
@@ -277,42 +285,50 @@ export default function App() {
       });
     } else {
       setIsCloudDataLoaded(false);
+      setParsedProfile({ name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] });
+      setResumes([]);
+      setJobsList([]);
+      setActiveResumeId('');
     }
   }, [currentUser?.uid]);
 
-  // Sync to localStorage & Firestore automatically ON MUTATIONS AFTER Cloud Load
+  // Sync to user-scoped localStorage & Firestore automatically ON MUTATIONS AFTER Cloud Load
   useEffect(() => {
+    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem('rt_profile', JSON.stringify(parsedProfile));
+      localStorage.setItem(`rt_profile_${currentUser.uid}`, JSON.stringify(parsedProfile));
     } catch (e) {}
-    if (currentUser?.uid && isCloudDataLoaded) {
+    if (isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { profile: parsedProfile });
     }
   }, [parsedProfile, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
+    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem('rt_resumes', JSON.stringify(resumes));
+      localStorage.setItem(`rt_resumes_${currentUser.uid}`, JSON.stringify(resumes));
     } catch (e) {}
-    if (currentUser?.uid && isCloudDataLoaded) {
+    if (isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { resumes });
     }
   }, [resumes, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
+    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem('rt_jobs', JSON.stringify(jobsList));
+      localStorage.setItem(`rt_jobs_${currentUser.uid}`, JSON.stringify(jobsList));
     } catch (e) {}
-    if (currentUser?.uid && isCloudDataLoaded) {
+    if (isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { jobsList });
     }
   }, [jobsList, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
+    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem('rt_styles', JSON.stringify(resumeStyles));
+      localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(resumeStyles));
     } catch (e) {}
-    if (currentUser?.uid && isCloudDataLoaded) {
+    if (isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { resumeStyles });
     }
   }, [resumeStyles, currentUser?.uid, isCloudDataLoaded]);
