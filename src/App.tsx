@@ -496,16 +496,8 @@ export default function App() {
         }
       }
 
-      // Stable Quantized Line-Band Sorting: Group by discrete 0.15in line bands, then preserve DOM reading order
-      itemsToEmbed.sort((a, b) => {
-        const lineA = Math.floor(a.yInches / 0.15);
-        const lineB = Math.floor(b.yInches / 0.15);
-
-        if (lineA !== lineB) {
-          return lineA - lineB; // Strict top-to-bottom line band order
-        }
-        return a.domIndex - b.domIndex; // Preserve DOM reading order within the same line band
-      });
+      // 100% Single-Column ATS DOM Order Sorting: Preserves exact top-to-bottom reading sequence without font quantization jumps
+      itemsToEmbed.sort((a, b) => a.domIndex - b.domIndex);
 
       // Set PDF Text Rendering Mode 3 (Invisible Text) and write elements sequentially in exact reading order
       (pdf as any).internal.write('3 Tr');
