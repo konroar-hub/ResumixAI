@@ -2989,7 +2989,7 @@ export default function App() {
                                                  {exp.title}
                                                </span>
                                                {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                                 <span className="ml-auto font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
+                                                 <span className="ml-auto font-semibold opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
                                                    {exp.period}
                                                  </span>
                                                )}
@@ -3004,7 +3004,7 @@ export default function App() {
                                                    {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
                                                  </span>
                                                  {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                                   <span className="ml-auto text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
+                                                   <span className="ml-auto opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
                                                      {exp.location}
                                                    </span>
                                                  )}
