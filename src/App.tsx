@@ -343,27 +343,51 @@ export default function App() {
     }
 
     setIsGeneratingPdf(true);
-    let styleTag: HTMLStyleElement | null = null;
+    let offscreenContainer: HTMLDivElement | null = null;
     try {
       await new Promise(r => setTimeout(r, 150));
 
-      const element = document.getElementById('resume-document-pdf-area');
-      if (!element) {
+      const sourceElement = document.getElementById('resume-document-pdf-area');
+      if (!sourceElement) {
         window.print();
         return;
       }
 
-      // Inject temporary CSS override to fix html2canvas letter-spacing / word-spacing bug
-      styleTag = document.createElement('style');
-      styleTag.id = 'pdf-clean-spacing-override';
+      // Wait for custom fonts to load for identical typography on mobile & desktop
+      if (document.fonts) {
+        try {
+          await document.fonts.ready;
+        } catch (e) {}
+      }
+
+      // Create a fixed 800px offscreen staging area to isolate layout from device viewport
+      offscreenContainer = document.createElement('div');
+      offscreenContainer.id = 'pdf-export-offscreen-stage';
+      offscreenContainer.style.position = 'absolute';
+      offscreenContainer.style.left = '-9999px';
+      offscreenContainer.style.top = '-9999px';
+      offscreenContainer.style.width = '800px';
+      offscreenContainer.style.maxWidth = '800px';
+      offscreenContainer.style.minWidth = '800px';
+      offscreenContainer.style.backgroundColor = activeStyle.theme.bgColor || '#ffffff';
+      offscreenContainer.style.color = activeStyle.theme.textColor || '#000000';
+      offscreenContainer.style.fontFamily = sourceElement.style.fontFamily || 'sans-serif';
+      
+      // Clone resume HTML into the fixed 800px container
+      offscreenContainer.innerHTML = sourceElement.innerHTML;
+      document.body.appendChild(offscreenContainer);
+
+      // Inject temporary CSS override to fix letter-spacing/word-spacing bug & preserve grid
+      const styleTag = document.createElement('style');
       styleTag.innerHTML = `
-        #resume-document-pdf-area,
-        #resume-document-pdf-area * {
+        #pdf-export-offscreen-stage,
+        #pdf-export-offscreen-stage * {
           letter-spacing: normal !important;
           word-spacing: normal !important;
+          box-sizing: border-box !important;
         }
       `;
-      document.head.appendChild(styleTag);
+      offscreenContainer.appendChild(styleTag);
 
       const candidateName = parsedProfile.name
         ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
@@ -384,19 +408,20 @@ export default function App() {
           scale: 2,
           useCORS: true,
           logging: false,
+          width: 800,
           windowWidth: 800
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(offscreenContainer).save();
     } catch (err) {
       console.error('Client-side PDF generation error:', err);
       window.print();
     } finally {
-      if (styleTag && styleTag.parentNode) {
-        styleTag.parentNode.removeChild(styleTag);
+      if (offscreenContainer && offscreenContainer.parentNode) {
+        offscreenContainer.parentNode.removeChild(offscreenContainer);
       }
       setIsGeneratingPdf(false);
     }
