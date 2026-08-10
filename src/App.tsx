@@ -3730,7 +3730,7 @@ export default function App() {
                       placeholder={
                         editingStyle
                           ? `Describe your refinements for "${editingStyle.name}"... (e.g. 'Make the header background dark navy #0f172a, switch font to Space Grotesk, and display skills as pill badges')`
-                          : "Describe your ideal resume aesthetic... (e.g., 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects')"
+                          : "Describe your ideal ATS resume aesthetic... (e.g., 'Executive Harvard Navy: Deep navy headers #0f172a, high-contrast dark charcoal text #1e293b on crisp white background with subtle line dividers')"
                       }
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 h-32 resize-none font-sans leading-relaxed"
                     />
@@ -3739,21 +3739,21 @@ export default function App() {
                   {/* Curated Suggested Prompts */}
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-medium text-slate-400">
-                      {editingStyle ? 'Quick Refinement Prompts:' : 'Curated Suggested Layout Prompts:'}
+                      {editingStyle ? 'Quick Refinement Prompts:' : 'Curated Suggested ATS Layout Prompts:'}
                     </label>
                     <div className="flex flex-wrap gap-1.5">
                       {(editingStyle ? [
                         { label: '🎨 Coral Header Banner', prompt: 'Change header background color to rich coral #e25b4c with white text' },
                         { label: '🏷️ Pill Badge Skills', prompt: 'Display technical skills as rounded pill badges with card background tint' },
                         { label: '📐 Left Brand Stripe', prompt: 'Add a thick crimson left margin brand stripe with editorial serif headings' },
-                        { label: '⚡ Dark Navy Split-Right', prompt: 'Use split-right header alignment with dark navy header box #0f172a' }
+                        { label: '⚡ Dark Navy Header Box', prompt: 'Use split-right header alignment with dark navy header box #0f172a' }
                       ] : [
-                        { label: '🚀 Split Left Sidebar', prompt: 'Modern Split Left Sidebar: Dark navy left column for Skills & Bio, crisp white right column for Experience & Projects' },
-                        { label: '💼 Right Column Metrics', prompt: 'Right Column Metrics: Clean slate background with dedicated right sidebar for Technical Skills & Core Competencies' },
-                        { label: '🏛️ Harvard Serif Law', prompt: 'Executive Harvard Serif: Classic serif font, double crimson rule dividers, formal right-aligned dates' },
-                        { label: '⚡ Cyberpunk Dark Mode', prompt: 'Cyberpunk Dark Mode: Neon purple & cyan glow accents on pitch black background with monospaced font' },
-                        { label: '📐 Swiss Brand Margin', prompt: 'Minimalist Swiss Editorial: Bold oversize left headers with a thick crimson brand margin stripe down left edge' },
-                        { label: '🎨 Modern Floating Cards', prompt: 'Cards & Floating Grid: Tinted violet background with white floating card blocks and pill badges' }
+                        { label: '🏛️ Harvard Executive', prompt: 'Harvard Executive: Single-column layout with deep navy #0f172a section headers, high-contrast dark text #18181b on crisp white, and subtle line dividers' },
+                        { label: '💼 Modern Minimalist', prompt: 'Modern Minimalist: High-contrast monochrome single-column architecture, bold black headers #000000, crisp Inter font, and generous section spacing' },
+                        { label: '📐 Swiss Brand Margin', prompt: 'Swiss Brand Margin: Single-column layout with a sleek vertical indigo #4f46e5 accent stripe down the left edge, high-contrast text, and uppercase section titles' },
+                        { label: '🎨 Executive Cards Modern', prompt: 'Executive Cards Modern: Single-column rounded card containers with subtle gray background tint #f8fafc and high-contrast dark slate body text #0f172a' },
+                        { label: '⚡ High-Contrast Dark Tech', prompt: 'High-Contrast Dark Tech: Deep Charcoal background #0f172a with crisp white body text #ffffff and vibrant emerald #10b981 section header accents' },
+                        { label: '🖋️ Editorial Classic', prompt: 'Editorial Classic: Timeless serif typography, deep burgundy #831843 section headers, high-contrast charcoal text #1c1917, and clean bullet styling' }
                       ]).map(item => (
                         <button
                           key={item.label}

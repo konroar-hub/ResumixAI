@@ -450,9 +450,14 @@ export async function generateResumeStyleWithGemini(userDesignPrompt: string): P
 Generate a distinctive, highly aesthetic, readable, and visually stunning resume template based on the user's design request: "${userDesignPrompt}"
 
 CORE DESIGN PARADIGMS & GUIDELINES:
-1. CONTRAST & READABILITY: Body text ('textColor') MUST have high WCAG contrast against 'bgColor'. Never output low-contrast light gray text on white or dark text on dark slate.
-   - For light themes (bgColor #ffffff, #f8fafc, #f5f3ff): use dark charcoal textColor (#0f172a, #1e293b, #111827).
-   - For dark themes (bgColor #090d16, #0f172a, #0b0f19): use high-clarity slate text (#f1f5f9, #e2e8f0) with distinct sidebar tint (#1e293b).
+1. EXTREME HIGH CONTRAST & READABILITY (CRITICAL):
+   - For light backgrounds (#ffffff, #f8fafc, #f5f3ff, #f4f4f5):
+     • textColor MUST be deep high-contrast dark charcoal (#0f172a, #18181b, #000000, #1e293b).
+     • secondaryColor (dates, companies) MUST be sufficiently dark slate (#334155, #475569, #1e3a8a, #0369a1). NEVER output low-contrast light gray (#94a3b8, #cbd5e1) or pastel text on light background!
+     • primaryColor (section headers) MUST be rich, dark, and punchy (#000000, #0f172a, #1e3a8a, #4338ca, #0369a1, #065f46, #831843).
+   - For dark backgrounds (#090d16, #0f172a, #0b0f19):
+     • textColor MUST be crisp bright white (#ffffff, #f8fafc, #f1f5f9).
+     • secondaryColor MUST be bright slate (#cbd5e1, #94a3b8, #38bdf8).
 2. TYPOGRAPHY MATTERS: Select fonts purposefully:
    - 'inter' or 'outfit': Modern tech, engineering, AI, product roles.
    - 'space-grotesk' or 'mono': Systems, infrastructure, cybersecurity, backend.
@@ -481,7 +486,7 @@ Output JSON ONLY matching this exact structure:
     "headerTextColor": "#HEX (Header name text color)",
     "headerAlignment": "center" | "left" | "right" | "split-right",
     "headerStyle": "minimal" | "banner-filled" | "left-accent-border" | "top-bottom-border" | "pills-banner",
-    "sidebarBgColor": "#HEX (Left sidebar background color for two-column layouts)",
+    "sidebarBgColor": "#HEX",
     "cardBgColor": "#HEX (Background tint color for card containers)",
     "accentColor": "#HEX (Highlights, bullets, skill badges)",
     "fontFamily": "inter" | "roboto" | "serif" | "mono" | "outfit" | "playfair" | "space-grotesk",
@@ -506,6 +511,21 @@ Output JSON ONLY matching this exact structure:
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : 'left';
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : 'pill-badges';
 
+    // Contrast Guard: Auto-clamp secondaryColor & textColor if generated too light on a white/light theme
+    const bgCol = (parsed.theme?.bgColor || '#ffffff').toLowerCase();
+    const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f5f3ff', '#f4f4f5', '#fafafa'].includes(bgCol);
+    let finalSecondaryColor = parsed.theme?.secondaryColor || '#475569';
+    let finalTextColor = parsed.theme?.textColor || '#0f172a';
+
+    if (isLightBg) {
+      if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
+        finalSecondaryColor = '#475569';
+      }
+      if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
+        finalTextColor = '#18181b';
+      }
+    }
+
     return {
       id: `style-ai-${Date.now()}`,
       name: parsed.name || 'AI Custom Resume Style',
@@ -513,8 +533,8 @@ Output JSON ONLY matching this exact structure:
       isAiGenerated: true,
       theme: {
         primaryColor: parsed.theme?.primaryColor || '#4f46e5',
-        secondaryColor: parsed.theme?.secondaryColor || '#0284c7',
-        textColor: parsed.theme?.textColor || '#0f172a',
+        secondaryColor: finalSecondaryColor,
+        textColor: finalTextColor,
         bgColor: parsed.theme?.bgColor || '#ffffff',
         headerBgColor: parsed.theme?.headerBgColor || undefined,
         headerTextColor: parsed.theme?.headerTextColor || undefined,
@@ -613,6 +633,21 @@ Output ONLY a JSON object:
     const validHeaderAlignment = ['center', 'left', 'right', 'split-right'].includes(parsed.theme?.headerAlignment) ? parsed.theme.headerAlignment : (existingStyle.theme.headerAlignment || 'left');
     const validSkillsStyle = ['comma-separated', 'pill-badges', 'bulleted-grid'].includes(parsed.theme?.skillsDisplayStyle) ? parsed.theme.skillsDisplayStyle : (existingStyle.theme.skillsDisplayStyle || 'pill-badges');
 
+    // Contrast Guard: Auto-clamp secondaryColor & textColor if generated too light on a white/light theme
+    const bgCol = (parsed.theme?.bgColor || existingStyle.theme.bgColor || '#ffffff').toLowerCase();
+    const isLightBg = ['#ffffff', '#fff', '#f8fafc', '#f5f3ff', '#f4f4f5', '#fafafa'].includes(bgCol);
+    let finalSecondaryColor = parsed.theme?.secondaryColor || existingStyle.theme.secondaryColor || '#475569';
+    let finalTextColor = parsed.theme?.textColor || existingStyle.theme.textColor || '#0f172a';
+
+    if (isLightBg) {
+      if (/^#(9|a|b|c|d|e|f)/i.test(finalSecondaryColor)) {
+        finalSecondaryColor = '#475569';
+      }
+      if (/^#(8|9|a|b|c|d|e|f)/i.test(finalTextColor)) {
+        finalTextColor = '#18181b';
+      }
+    }
+
     return {
       id: existingStyle.id,
       name: parsed.name || existingStyle.name,
@@ -620,8 +655,8 @@ Output ONLY a JSON object:
       isAiGenerated: true,
       theme: {
         primaryColor: parsed.theme?.primaryColor || existingStyle.theme.primaryColor,
-        secondaryColor: parsed.theme?.secondaryColor || existingStyle.theme.secondaryColor,
-        textColor: parsed.theme?.textColor || existingStyle.theme.textColor,
+        secondaryColor: finalSecondaryColor,
+        textColor: finalTextColor,
         bgColor: parsed.theme?.bgColor || existingStyle.theme.bgColor,
         headerBgColor: parsed.theme?.headerBgColor !== undefined ? parsed.theme.headerBgColor : existingStyle.theme.headerBgColor,
         headerTextColor: parsed.theme?.headerTextColor !== undefined ? parsed.theme.headerTextColor : existingStyle.theme.headerTextColor,
