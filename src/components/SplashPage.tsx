@@ -77,20 +77,25 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
       }
     } catch (err: any) {
       console.warn('Google Sign-in popup notice:', err?.code, err?.message);
-      setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
       
+      // Friendly AdBlocker and Popup Blocker handling
       if (
         err?.code === 'auth/popup-blocked' ||
         err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request' ||
-        err?.message?.includes('popup')
+        err?.code === 'auth/network-request-failed' ||
+        err?.code === 'auth/internal-error' ||
+        err?.message?.toLowerCase().includes('adblock') ||
+        err?.message?.toLowerCase().includes('blocked')
       ) {
+        setAuthError('🛡️ AdBlocker / Popup Blocker detected. Redirecting to Google Login screen...');
         try {
           await signInWithRedirect(auth, googleProvider);
-          return; // Allow browser to perform top-level navigation without resetting state
+          return;
         } catch (redirectErr: any) {
-          setAuthError(`[${redirectErr?.code || 'REDIRECT_ERROR'}]: ${redirectErr?.message || 'Failed to redirect for Google Sign-in'}`);
+          setAuthError('🛡️ An AdBlocker or Privacy Extension blocked Google OAuth. Please pause your AdBlocker for this site or use Email Sign-In below.');
         }
+      } else {
+        setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
       }
     } finally {
       setIsAuthLoading(false);

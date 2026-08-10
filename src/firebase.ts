@@ -78,6 +78,10 @@ if (isFirebaseConfigured) {
 
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+// Force Google to show the Account Selector screen every time the user clicks sign in
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 export interface UserStoreData {
   profile?: MasterProfile;
