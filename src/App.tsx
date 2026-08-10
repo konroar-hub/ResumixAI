@@ -1270,11 +1270,7 @@ export default function App() {
     );
   }
 
-  if (!currentUser && isFirebaseConfigured) {
-    return <SplashPage onEnterApp={() => setViewMode('app')} currentUser={currentUser} />;
-  }
-
-  if (viewMode === 'splash') {
+  if (viewMode === 'splash' && !currentUser) {
     return <SplashPage onEnterApp={() => setViewMode('app')} currentUser={currentUser} />;
   }
 
