@@ -1132,7 +1132,7 @@ export default function App() {
           {activeTab === 'resumes' && (
             <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
               {/* Resume Styles Horizontal Bar */}
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 shadow-md">
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 shadow-md no-print">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center space-x-2">
                     <Palette className="w-5 h-5 text-indigo-400" />
@@ -1227,7 +1227,7 @@ export default function App() {
               </div>
 
               {/* Header Bar with Pop-up Create Button */}
-              <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 no-print">
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
                     <FolderKanban className="w-5 h-5 text-indigo-400" />
@@ -1680,7 +1680,7 @@ export default function App() {
               {/* 2-Column Side-by-Side View: Resumes List on Left, Live ATS Resume Preview on Right */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left Column: Resumes List */}
-                <div className="lg:col-span-4 space-y-6">
+                <div className="lg:col-span-4 space-y-6 no-print">
                   <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 shadow-lg">
                     <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                       Resumes ({resumes.length})
@@ -1752,7 +1752,7 @@ export default function App() {
 
                 {/* Right Column: Live Resume Preview */}
                 <div className="lg:col-span-8 space-y-4">
-                  <div className="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-t-xl border border-slate-800 text-xs text-slate-400">
+                  <div className="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-t-xl border border-slate-800 text-xs text-slate-400 no-print">
                     <span className="font-semibold text-slate-200 flex items-center space-x-1.5">
                       <Eye className="w-4 h-4 text-indigo-400" />
                       <span>Live ATS Resume Preview</span>

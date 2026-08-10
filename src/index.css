@@ -24,28 +24,51 @@
   background: #475569;
 }
 
-/* Printable Resume PDF Export Styles - Force Exact Background Fill, Grid Columns, & No Artifact Borders */
+/* Printable Resume PDF Export Styles - Force display of ONLY the .print-area content */
 @media print {
   @page {
     margin: 0.4in;
     size: portrait;
   }
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-  body {
+  
+  html, body {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-  .no-print {
+
+  /* Completely hide all non-print elements */
+  .no-print, 
+  header, 
+  nav, 
+  button, 
+  aside,
+  form,
+  .no-print * {
     display: none !important;
   }
+
+  /* Hide everything outside .print-area */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make ONLY .print-area and its children visible */
+  .print-area, 
+  .print-area * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .print-area {
-    position: static !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -55,17 +78,10 @@
     border-right: none !important;
     border-left: none !important;
     outline: none !important;
+    background: white !important;
     overflow: visible !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
   }
-  .print-area * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-    box-shadow: none !important;
-  }
+
   /* Force grid columns to be preserved in print layout engine */
   .grid-cols-12 {
     display: grid !important;
