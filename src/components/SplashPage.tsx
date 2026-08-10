@@ -23,6 +23,8 @@ import {
   auth,
   googleProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -44,6 +46,19 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [activeDemoTab, setActiveDemoTab] = useState<'architect' | 'ai' | 'frontend'>('architect');
 
+  // Handle redirect result if popup was blocked and app fell back to full-page redirect
+  React.useEffect(() => {
+    if (isFirebaseConfigured) {
+      getRedirectResult(auth).then((result) => {
+        if (result?.user) {
+          onEnterApp();
+        }
+      }).catch(err => {
+        console.warn('Redirect authentication notice:', err);
+      });
+    }
+  }, [onEnterApp]);
+
   const handleGoogleSignIn = async () => {
     setAuthError('');
     setIsAuthLoading(true);
@@ -57,7 +72,23 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
       setIsAuthModalOpen(false);
       onEnterApp();
     } catch (err: any) {
-      setAuthError(err?.message || 'Failed to sign in with Google');
+      console.warn('Google Sign-in popup notice:', err?.code, err?.message);
+      if (
+        err?.code === 'auth/popup-blocked' || 
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request' ||
+        err?.message?.includes('popup')
+      ) {
+        try {
+          // Seamless fallback to full-page redirect when popup is blocked by browser / CORS
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr: any) {
+          setAuthError(redirectErr?.message || 'Failed to redirect for Google Sign-in');
+        }
+      } else {
+        setAuthError(err?.message || 'Failed to sign in with Google');
+      }
     } finally {
       setIsAuthLoading(false);
     }
