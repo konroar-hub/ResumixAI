@@ -343,9 +343,9 @@ export default function App() {
     }
 
     setIsGeneratingPdf(true);
-    let styleTag: HTMLStyleElement | null = null;
     let originalWidth = '';
     let originalMinWidth = '';
+    const modifiedInlineStyles: { el: HTMLElement; ls: string; ws: string }[] = [];
 
     try {
       await new Promise(r => setTimeout(r, 150));
@@ -362,7 +362,7 @@ export default function App() {
         } catch (e) {}
       }
 
-      // Save original styles
+      // Save original container styles
       originalWidth = element.style.width;
       originalMinWidth = element.style.minWidth;
 
@@ -370,17 +370,21 @@ export default function App() {
       element.style.width = '800px';
       element.style.minWidth = '800px';
 
-      // Inject temporary CSS override to fix letter-spacing/word-spacing bug
-      styleTag = document.createElement('style');
-      styleTag.id = 'pdf-clean-spacing-override';
-      styleTag.innerHTML = `
-        #resume-document-pdf-area,
-        #resume-document-pdf-area * {
-          letter-spacing: normal !important;
-          word-spacing: normal !important;
+      // Directly normalize inline letter-spacing and word-spacing on every child node
+      // (Bypasses Firefox Gecko computed style cache delay during html2canvas traversal)
+      const childNodes = element.querySelectorAll('*');
+      childNodes.forEach((node) => {
+        const htmlEl = node as HTMLElement;
+        if (htmlEl.style) {
+          modifiedInlineStyles.push({
+            el: htmlEl,
+            ls: htmlEl.style.letterSpacing,
+            ws: htmlEl.style.wordSpacing
+          });
+          htmlEl.style.letterSpacing = 'normal';
+          htmlEl.style.wordSpacing = 'normal';
         }
-      `;
-      document.head.appendChild(styleTag);
+      });
 
       const candidateName = parsedProfile.name
         ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
@@ -401,6 +405,8 @@ export default function App() {
           scale: 2,
           useCORS: true,
           logging: false,
+          letterRendering: false,
+          foreignObjectRendering: true,
           width: 800,
           windowWidth: 850
         },
@@ -418,9 +424,12 @@ export default function App() {
         element.style.width = originalWidth;
         element.style.minWidth = originalMinWidth;
       }
-      if (styleTag && styleTag.parentNode) {
-        styleTag.parentNode.removeChild(styleTag);
-      }
+      modifiedInlineStyles.forEach(item => {
+        if (item.el) {
+          item.el.style.letterSpacing = item.ls;
+          item.el.style.wordSpacing = item.ws;
+        }
+      });
       setIsGeneratingPdf(false);
     }
   };
