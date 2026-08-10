@@ -27,13 +27,15 @@
 /* Printable Resume PDF Export Styles - Force display of ONLY the .print-area content */
 @media print {
   @page {
-    margin: 0.4in;
+    margin: 0 !important;
     size: portrait;
   }
   
   html, body {
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
@@ -69,9 +71,10 @@
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    max-width: 100% !important;
+    min-height: 100vh !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0.5in 0.6in !important;
+    box-sizing: border-box !important;
     box-shadow: none !important;
     border: none !important;
     border-right: none !important;

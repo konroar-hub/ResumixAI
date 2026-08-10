@@ -539,7 +539,13 @@ export default function App() {
     printStyle.id = 'dynamic-print-bg-style';
     printStyle.innerHTML = `
       @media print {
+        @page {
+          margin: 0 !important;
+          size: portrait;
+        }
         html, body {
+          margin: 0 !important;
+          padding: 0 !important;
           background-color: ${printBgColor} !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
@@ -547,6 +553,9 @@ export default function App() {
         }
         #resume-document-pdf-area {
           background-color: ${printBgColor} !important;
+          margin: 0 !important;
+          padding: 0.5in 0.6in !important;
+          box-sizing: border-box !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
