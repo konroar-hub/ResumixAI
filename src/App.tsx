@@ -240,10 +240,11 @@ export default function App() {
     if (activeStyleId === styleId) {
       setActiveStyleId(updated[0]?.id || 'style-executive');
     }
+    const storageUid = currentUser?.uid || 'guest';
+    try {
+      localStorage.setItem(`rt_styles_${storageUid}`, JSON.stringify(updated));
+    } catch (e) {}
     if (currentUser?.uid) {
-      try {
-        localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(updated));
-      } catch (e) {}
       saveUserDataToFirestore(currentUser.uid, { resumeStyles: updated });
     }
   };
@@ -274,15 +275,10 @@ export default function App() {
           } else {
             setJobsList([]);
           }
-          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles) && cloudData.resumeStyles.length > 0) {
-            const userStyles = cloudData.resumeStyles;
-            const mergedStyles = [...userStyles];
-            DEFAULT_RESUME_STYLES.forEach(defStyle => {
-              if (!mergedStyles.some(s => s.id === defStyle.id)) {
-                mergedStyles.push(defStyle);
-              }
-            });
-            setResumeStyles(mergedStyles);
+          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles)) {
+            setResumeStyles(cloudData.resumeStyles);
+          } else {
+            setResumeStyles(DEFAULT_RESUME_STYLES);
           }
         } else {
           // Brand New Firestore User -> Initialize 100% Clean Blank Profile & 0 Resumes
