@@ -59,7 +59,7 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
     }
   }, [onEnterApp]);
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setAuthError('');
     setIsAuthLoading(true);
 
@@ -68,31 +68,33 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
       return;
     }
 
-    // Call signInWithPopup synchronously within the exact user click event loop
-    signInWithPopup(auth, googleProvider)
-      .then((result) => {
-        if (result?.user) {
-          setIsAuthModalOpen(false);
-          onEnterApp();
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result?.user) {
+        setIsAuthModalOpen(false);
+        onEnterApp();
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Google Sign-in popup notice:', err?.code, err?.message);
+      setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
+      
+      if (
+        err?.code === 'auth/popup-blocked' ||
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request' ||
+        err?.message?.includes('popup')
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return; // Allow browser to perform top-level navigation without resetting state
+        } catch (redirectErr: any) {
+          setAuthError(`[${redirectErr?.code || 'REDIRECT_ERROR'}]: ${redirectErr?.message || 'Failed to redirect for Google Sign-in'}`);
         }
-      })
-      .catch((err: any) => {
-        console.warn('Google Sign-in popup notice:', err?.code, err?.message);
-        setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
-        if (
-          err?.code === 'auth/popup-blocked' ||
-          err?.code === 'auth/popup-closed-by-user' ||
-          err?.code === 'auth/cancelled-popup-request' ||
-          err?.message?.includes('popup')
-        ) {
-          signInWithRedirect(auth, googleProvider).catch((redirectErr: any) => {
-            setAuthError(`[${redirectErr?.code || 'REDIRECT_ERROR'}]: ${redirectErr?.message || 'Failed to redirect for Google Sign-in'}`);
-          });
-        }
-      })
-      .finally(() => {
-        setIsAuthLoading(false);
-      });
+      }
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
