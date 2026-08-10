@@ -533,36 +533,10 @@ export default function App() {
     const originalTitle = document.title;
     document.title = formattedFileName;
 
-    // Inject temporary dynamic print style element to preserve activeStyle.theme.bgColor during print
-    const printBgColor = activeStyle?.theme?.bgColor || '#ffffff';
-    const printStyle = document.createElement('style');
-    printStyle.id = 'dynamic-print-bg-style';
-    printStyle.innerHTML = `
-      @media print {
-        html, body {
-          background-color: ${printBgColor} !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
-        #resume-document-pdf-area {
-          background-color: ${printBgColor} !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
-      }
-    `;
-    document.head.appendChild(printStyle);
-
     window.print();
 
     setTimeout(() => {
       document.title = originalTitle;
-      const styleEl = document.getElementById('dynamic-print-bg-style');
-      if (styleEl && styleEl.parentNode) {
-        styleEl.parentNode.removeChild(styleEl);
-      }
     }, 1000);
   };
 
