@@ -360,12 +360,15 @@ export default function App() {
         } catch (e) {}
       }
 
-      // Create a fixed 800px offscreen staging area to isolate layout from device viewport
+      // Create a fixed 800px staging area at viewport [0,0] to prevent WebRender culling in Mobile Firefox
       offscreenContainer = document.createElement('div');
       offscreenContainer.id = 'pdf-export-offscreen-stage';
-      offscreenContainer.style.position = 'absolute';
-      offscreenContainer.style.left = '-9999px';
-      offscreenContainer.style.top = '-9999px';
+      offscreenContainer.style.position = 'fixed';
+      offscreenContainer.style.left = '0px';
+      offscreenContainer.style.top = '0px';
+      offscreenContainer.style.zIndex = '-9999';
+      offscreenContainer.style.opacity = '0.999';
+      offscreenContainer.style.pointerEvents = 'none';
       offscreenContainer.style.width = '800px';
       offscreenContainer.style.maxWidth = '800px';
       offscreenContainer.style.minWidth = '800px';
@@ -409,7 +412,9 @@ export default function App() {
           useCORS: true,
           logging: false,
           width: 800,
-          windowWidth: 800
+          windowWidth: 800,
+          scrollX: 0,
+          scrollY: 0
         },
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
