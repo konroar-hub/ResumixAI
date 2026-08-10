@@ -40,33 +40,18 @@
     color-adjust: exact !important;
   }
 
-  /* Completely hide all non-print elements */
+  /* Completely hide all non-print UI elements */
   .no-print, 
   header, 
   nav, 
   button, 
   aside,
-  form,
-  .no-print * {
+  form {
     display: none !important;
   }
 
-  /* Hide everything outside .print-area */
-  body * {
-    visibility: hidden !important;
-  }
-
-  /* Make ONLY .print-area and its children visible */
-  .print-area, 
-  .print-area * {
-    visibility: visible !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
   .print-area {
-    position: absolute !important;
+    position: relative !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
@@ -75,8 +60,6 @@
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-    border-right: none !important;
-    border-left: none !important;
     outline: none !important;
     background: white !important;
     overflow: visible !important;
