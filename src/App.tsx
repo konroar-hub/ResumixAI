@@ -2529,7 +2529,7 @@ export default function App() {
                   ) : (
                     <div 
                       id="resume-document-pdf-area"
-                      className="p-6 sm:p-8 pb-12 sm:pb-16 rounded-b-xl shadow-xl space-y-5 leading-normal min-h-[600px] print-area transition-all border-none"
+                      className="p-6 sm:p-8 pb-12 sm:pb-16 rounded-b-xl shadow-xl space-y-5 leading-normal min-h-[600px] overflow-x-auto print-area transition-all border-none"
                       style={{
                         backgroundColor: activeStyle.theme.bgColor,
                         color: activeStyle.theme.textColor,
