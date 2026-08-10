@@ -240,6 +240,12 @@ export default function App() {
     if (activeStyleId === styleId) {
       setActiveStyleId(updated[0]?.id || 'style-executive');
     }
+    if (currentUser?.uid) {
+      try {
+        localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(updated));
+      } catch (e) {}
+      saveUserDataToFirestore(currentUser.uid, { resumeStyles: updated });
+    }
   };
 
   const [isCloudDataLoaded, setIsCloudDataLoaded] = useState(false);
@@ -268,8 +274,15 @@ export default function App() {
           } else {
             setJobsList([]);
           }
-          if (cloudData.resumeStyles && cloudData.resumeStyles.length > 0) {
-            setResumeStyles(cloudData.resumeStyles);
+          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles) && cloudData.resumeStyles.length > 0) {
+            const userStyles = cloudData.resumeStyles;
+            const mergedStyles = [...userStyles];
+            DEFAULT_RESUME_STYLES.forEach(defStyle => {
+              if (!mergedStyles.some(s => s.id === defStyle.id)) {
+                mergedStyles.push(defStyle);
+              }
+            });
+            setResumeStyles(mergedStyles);
           }
         } else {
           // Brand New Firestore User -> Initialize 100% Clean Blank Profile & 0 Resumes
@@ -418,9 +431,9 @@ export default function App() {
 
       const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 
-      const rect = element.getBoundingClientRect();
-      const measuredWidth = Math.max(Math.round(rect.width), element.clientWidth || 750);
-      const measuredHeight = Math.max(Math.round(rect.height), element.clientHeight || 1000);
+      // Standard US Letter width (800px) or element's unconstrained scrollWidth to prevent right-edge clipping
+      const documentWidth = Math.max(800, element.scrollWidth || 0);
+      const documentHeight = Math.max(element.scrollHeight || 0, element.clientHeight || 0);
 
       const html2canvasConfig: any = {
         scale: 2,
@@ -433,9 +446,9 @@ export default function App() {
       };
 
       if (!isMobileDevice) {
-        html2canvasConfig.width = measuredWidth;
-        html2canvasConfig.height = measuredHeight;
-        html2canvasConfig.windowWidth = measuredWidth;
+        html2canvasConfig.width = documentWidth;
+        html2canvasConfig.height = documentHeight;
+        html2canvasConfig.windowWidth = documentWidth;
       }
 
       const opt = {
@@ -3923,14 +3936,25 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
+                        if (!previewAiStyle) return;
+                        let updatedStyles: ResumeStyle[];
                         if (editingStyle) {
-                          setResumeStyles(prev => prev.map(s => s.id === editingStyle.id ? previewAiStyle : s));
+                          updatedStyles = resumeStyles.map(s => s.id === editingStyle.id ? previewAiStyle : s);
                           setActiveStyleId(editingStyle.id);
                         } else {
-                          setResumeStyles(prev => [previewAiStyle, ...prev]);
+                          updatedStyles = [previewAiStyle, ...resumeStyles];
                           setActiveStyleId(previewAiStyle.id);
                         }
+                        setResumeStyles(updatedStyles);
                         setIsAiStyleModalOpen(false);
+
+                        // Direct immediate persistence to LocalStorage and Firestore
+                        if (currentUser?.uid) {
+                          try {
+                            localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(updatedStyles));
+                          } catch (e) {}
+                          saveUserDataToFirestore(currentUser.uid, { resumeStyles: updatedStyles });
+                        }
                       }}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-lg transition whitespace-nowrap"
                     >
