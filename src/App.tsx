@@ -199,8 +199,16 @@ export default function App() {
   // LocalStorage & Firestore Persisted Resume Styles State
   const [resumeStyles, setResumeStyles] = useState<ResumeStyle[]>(() => {
     try {
-      const saved = localStorage.getItem('rt_styles');
-      if (saved) return JSON.parse(saved);
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('rt_styles')) {
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        }
+      }
     } catch (e) {}
     return DEFAULT_RESUME_STYLES;
   });
@@ -275,10 +283,10 @@ export default function App() {
           } else {
             setJobsList([]);
           }
-          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles)) {
+          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles) && cloudData.resumeStyles.length > 0) {
             setResumeStyles(cloudData.resumeStyles);
-          } else {
-            setResumeStyles(DEFAULT_RESUME_STYLES);
+          } else if (currentUser?.uid) {
+            saveUserDataToFirestore(currentUser.uid, { resumeStyles });
           }
         } else {
           // Brand New Firestore User -> Initialize 100% Clean Blank Profile & 0 Resumes
@@ -2355,9 +2363,9 @@ export default function App() {
                     {/* Dynamic Header Layout Renderer */}
                     {activeStyle.theme.headerAlignment === 'split-right' ? (
                       <div 
-                        className={`pb-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
+                        className={`pb-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : ''}`}
                         style={{
-                          borderColor: activeStyle.theme.dividerColor,
+                          borderBottom: activeStyle.theme.headerBgColor ? 'none' : `2px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`,
                           backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
                         }}
                       >
@@ -2382,9 +2390,9 @@ export default function App() {
                         className={`pb-4 transition-all ${
                           activeStyle.theme.headerAlignment === 'left' ? 'text-left' :
                           activeStyle.theme.headerAlignment === 'right' ? 'text-right' : 'text-center'
-                        } ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : 'border-b-2'}`}
+                        } ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : ''}`}
                         style={{
-                          borderColor: activeStyle.theme.dividerColor,
+                          borderBottom: (activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor) ? 'none' : `2px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`,
                           backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
                         }}
                       >
@@ -2427,7 +2435,7 @@ export default function App() {
 
                             return (
                               <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   About Me
                                 </h3>
                                 {totalAboutItems.map(exp => (
@@ -2449,7 +2457,7 @@ export default function App() {
 
                             return (
                               <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
                                   Technical Skills
                                 </h3>
                                 <div className="flex flex-wrap gap-1">
@@ -2477,7 +2485,7 @@ export default function App() {
 
                             return (
                               <div key={sec} className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   {sec}
                                 </h2>
                                 {totalItems.map(exp => {
@@ -2525,7 +2533,7 @@ export default function App() {
 
                             return (
                               <div key={sec} className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
                                   {sec}
                                 </h2>
                                 {totalItems.map(exp => {
@@ -2575,7 +2583,7 @@ export default function App() {
 
                             return (
                               <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
                                   Technical Skills
                                 </h3>
                                 <div className="flex flex-wrap gap-1">
@@ -2601,7 +2609,7 @@ export default function App() {
 
                             return (
                               <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor }}>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
                                   About Me
                                 </h3>
                                 {totalAboutItems.map(exp => (
@@ -2709,8 +2717,8 @@ export default function App() {
                           return (
                             <div key={sec} className="space-y-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5 capitalize"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
+                                className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize"
+                                style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 {sec}
                               </h2>
@@ -3944,11 +3952,14 @@ export default function App() {
                         setResumeStyles(updatedStyles);
                         setIsAiStyleModalOpen(false);
 
-                        // Direct immediate persistence to LocalStorage and Firestore
+                        // Direct immediate dual-save to LocalStorage and Firestore
+                        const storageUid = currentUser?.uid || 'guest';
+                        try {
+                          localStorage.setItem(`rt_styles_${storageUid}`, JSON.stringify(updatedStyles));
+                          localStorage.setItem('rt_styles', JSON.stringify(updatedStyles));
+                        } catch (e) {}
+
                         if (currentUser?.uid) {
-                          try {
-                            localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(updatedStyles));
-                          } catch (e) {}
                           saveUserDataToFirestore(currentUser.uid, { resumeStyles: updatedStyles });
                         }
                       }}
