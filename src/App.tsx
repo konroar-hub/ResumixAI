@@ -50,10 +50,8 @@ import {
   signOut,
   isFirebaseConfigured,
   saveUserDataToFirestore,
-  loadUserDataFromFirestore,
-  addDebugLog
+  loadUserDataFromFirestore
 } from './firebase';
-import { AuthDebugDrawer } from './components/AuthDebugDrawer';
 
 const formatBulletText = (b: any): string => {
   if (!b) return '';
@@ -138,23 +136,18 @@ export default function App() {
   // Observe Firebase Auth State with persistent session restore
   useEffect(() => {
     if (isFirebaseConfigured) {
-      addDebugLog('info', 'Subscribing to onAuthStateChanged...');
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user);
         setIsAuthLoading(false);
         if (user) {
-          addDebugLog('success', `onAuthStateChanged: Active user session for ${user.email || user.uid}`);
           setViewMode('app');
           try {
             localStorage.setItem('rt_view_mode', 'app');
           } catch (e) {}
-        } else {
-          addDebugLog('warn', 'onAuthStateChanged: User session is null.');
         }
       });
       return () => unsubscribe();
     } else {
-      addDebugLog('warn', 'isFirebaseConfigured is FALSE in App useEffect.');
       setIsAuthLoading(false);
     }
   }, []);
@@ -251,56 +244,92 @@ export default function App() {
     }
   };
 
-  // Load data from Firestore when user logs in
+  const [isCloudDataLoaded, setIsCloudDataLoaded] = useState(false);
+  const [isCloudSaving, setIsCloudSaving] = useState(false);
+
+  // Load data from Firestore when user logs in, guarding against initial save overwrite
   useEffect(() => {
     if (currentUser?.uid) {
+      setIsCloudDataLoaded(false);
       loadUserDataFromFirestore(currentUser.uid).then(cloudData => {
         if (cloudData) {
-          if (cloudData.profile) setParsedProfile(cloudData.profile);
-          if (cloudData.resumes) setResumes(cloudData.resumes);
-          if (cloudData.jobsList) setJobsList(cloudData.jobsList);
-          if (cloudData.resumeStyles) setResumeStyles(cloudData.resumeStyles);
+          if (cloudData.profile && Array.isArray(cloudData.profile.experiences) && cloudData.profile.experiences.length > 0) {
+            setParsedProfile(cloudData.profile);
+          }
+          if (cloudData.resumes && cloudData.resumes.length > 0) {
+            setResumes(cloudData.resumes);
+            setActiveResumeId(cloudData.resumes[0].id);
+          }
+          if (cloudData.jobsList && cloudData.jobsList.length > 0) {
+            setJobsList(cloudData.jobsList);
+          }
+          if (cloudData.resumeStyles && cloudData.resumeStyles.length > 0) {
+            setResumeStyles(cloudData.resumeStyles);
+          }
         }
+        setIsCloudDataLoaded(true);
+      }).catch(err => {
+        console.error('Firestore load error:', err);
+        setIsCloudDataLoaded(true);
       });
+    } else {
+      setIsCloudDataLoaded(false);
     }
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
-  // Sync to localStorage & Firestore automatically on state mutations
+  // Sync to localStorage & Firestore automatically ON MUTATIONS AFTER Cloud Load
   useEffect(() => {
     try {
       localStorage.setItem('rt_profile', JSON.stringify(parsedProfile));
     } catch (e) {}
-    if (currentUser?.uid) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { profile: parsedProfile });
     }
-  }, [parsedProfile, currentUser]);
+  }, [parsedProfile, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
     try {
       localStorage.setItem('rt_resumes', JSON.stringify(resumes));
     } catch (e) {}
-    if (currentUser?.uid) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { resumes });
     }
-  }, [resumes, currentUser]);
+  }, [resumes, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
     try {
       localStorage.setItem('rt_jobs', JSON.stringify(jobsList));
     } catch (e) {}
-    if (currentUser?.uid) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { jobsList });
     }
-  }, [jobsList, currentUser]);
+  }, [jobsList, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
     try {
       localStorage.setItem('rt_styles', JSON.stringify(resumeStyles));
     } catch (e) {}
-    if (currentUser?.uid) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { resumeStyles });
     }
-  }, [resumeStyles, currentUser]);
+  }, [resumeStyles, currentUser?.uid, isCloudDataLoaded]);
+
+  const forceSyncToCloud = async () => {
+    if (!currentUser?.uid || !isFirebaseConfigured) return;
+    setIsCloudSaving(true);
+    try {
+      await saveUserDataToFirestore(currentUser.uid, {
+        profile: parsedProfile,
+        resumes,
+        jobsList,
+        resumeStyles
+      });
+    } catch (e) {
+      console.error('Manual Cloud Sync error:', e);
+    } finally {
+      setIsCloudSaving(false);
+    }
+  };
   const [jobDescription, setJobDescription] = useState('');
   const [viewingJobDescription, setViewingJobDescription] = useState<JobRecord | null>(null);
   const [viewingAtsAnalysisJob, setViewingAtsAnalysisJob] = useState<JobRecord | null>(null);
@@ -1409,18 +1438,30 @@ export default function App() {
             </button>
 
             {currentUser && (
-              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-xs">
-                <UserIcon className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-slate-300 font-medium hidden md:inline truncate max-w-[120px]">
-                  {currentUser.email || 'User'}
-                </span>
+              <div className="flex items-center space-x-2">
                 <button
-                  onClick={handleSignOut}
-                  className="text-slate-500 hover:text-rose-400 transition p-0.5"
-                  title="Sign Out"
+                  type="button"
+                  onClick={forceSyncToCloud}
+                  disabled={isCloudSaving}
+                  className="flex items-center space-x-1 bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-700 text-xs px-2.5 py-1 rounded-lg transition"
+                  title="Force Sync All Resumes & Profile to Cloud Firestore"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  <span className="hidden lg:inline">{isCloudSaving ? 'Syncing...' : 'Save to Cloud'}</span>
                 </button>
+                <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg text-xs">
+                  <UserIcon className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-slate-300 font-medium hidden md:inline truncate max-w-[120px]">
+                    {currentUser.email || 'User'}
+                  </span>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-slate-500 hover:text-rose-400 transition p-0.5"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -3647,9 +3688,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* On-Screen Live Diagnostics Drawer */}
-      <AuthDebugDrawer currentUser={currentUser} isAuthLoading={isAuthLoading} viewMode={viewMode} />
     </div>
   );
 }
