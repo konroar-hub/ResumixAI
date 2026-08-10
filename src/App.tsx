@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_MASTER_YAML, INITIAL_RESUMES, DEFAULT_JOB_TRACKER, DEFAULT_RESUME_STYLES } from './mockData';
 import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord, AtsAnalysisDetails, ResumeStyle } from './types';
 import yaml from 'js-yaml';
+import { toPng, toCanvas } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { 
   Layers, 
   Sparkles, 
@@ -44,7 +46,8 @@ import {
   enhanceBulletWithGemini,
   analyzeJobMatchWithGemini,
   generateResumeStyleWithGemini,
-  refineResumeStyleWithGemini
+  refineResumeStyleWithGemini,
+  cleanYamlCodeBlock
 } from './services/geminiService';
 import {
   auth,
@@ -161,33 +164,40 @@ export default function App() {
     }
     setCurrentUser(null);
     setViewMode('splash');
-    try {
-      localStorage.removeItem('rt_profile');
-      localStorage.removeItem('rt_resumes');
-      localStorage.removeItem('rt_jobs');
-      localStorage.removeItem('rt_styles');
-      localStorage.setItem('rt_view_mode', 'splash');
-    } catch (e) {}
     // Purge memory state completely on sign out so no user data persists
     setParsedProfile({ name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] });
     setResumes([]);
-    setJobsList([]);
+    setJobsList(DEFAULT_JOB_TRACKER);
+    setResumeStyles(DEFAULT_RESUME_STYLES);
     setActiveResumeId('');
+    setActiveStyleId('style-executive');
   };
 
-  // User-scoped LocalStorage Initial State Loader
+  // Dual-Persisted Initial States (LocalStorage Instant Restore + Firestore Sync)
   const [parsedProfile, setParsedProfile] = useState<MasterProfile>(() => {
+    try {
+      const saved = localStorage.getItem('rt_profile');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
     return { name: '', title: '', email: '', phone: '', location: '', summary: '', experiences: [] };
   });
 
-  // LocalStorage Persisted Resumes State
-  const [resumes, setResumes] = useState<ResumeItem[]>([]);
-
-  const [activeResumeId, setActiveResumeId] = useState<string>(() => {
-    return resumes.length > 0 ? resumes[0].id : '';
+  const [resumes, setResumes] = useState<ResumeItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('rt_resumes');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
   });
 
-  // LocalStorage Persisted Job Tracker State
+  const [activeResumeId, setActiveResumeId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('rt_active_resume_id');
+      if (saved) return saved;
+    } catch (e) {}
+    return '';
+  });
+
   const [jobsList, setJobsList] = useState<JobRecord[]>(() => {
     try {
       const saved = localStorage.getItem('rt_jobs');
@@ -196,25 +206,23 @@ export default function App() {
     return DEFAULT_JOB_TRACKER;
   });
 
-  // LocalStorage & Firestore Persisted Resume Styles State
   const [resumeStyles, setResumeStyles] = useState<ResumeStyle[]>(() => {
     try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('rt_styles')) {
-          const saved = localStorage.getItem(key);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-          }
-        }
+      const saved = localStorage.getItem('rt_styles');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {}
     return DEFAULT_RESUME_STYLES;
   });
 
   const [activeStyleId, setActiveStyleId] = useState<string>(() => {
-    return resumeStyles[0]?.id || 'style-executive';
+    try {
+      const saved = localStorage.getItem('rt_active_style_id');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'style-executive';
   });
 
   const [isAiStyleModalOpen, setIsAiStyleModalOpen] = useState(false);
@@ -248,10 +256,6 @@ export default function App() {
     if (activeStyleId === styleId) {
       setActiveStyleId(updated[0]?.id || 'style-executive');
     }
-    const storageUid = currentUser?.uid || 'guest';
-    try {
-      localStorage.setItem(`rt_styles_${storageUid}`, JSON.stringify(updated));
-    } catch (e) {}
     if (currentUser?.uid) {
       saveUserDataToFirestore(currentUser.uid, { resumeStyles: updated });
     }
@@ -265,6 +269,21 @@ export default function App() {
     if (currentUser?.uid) {
       setIsCloudDataLoaded(false);
       loadUserDataFromFirestore(currentUser.uid).then(cloudData => {
+        let currentStyles = DEFAULT_RESUME_STYLES;
+        try {
+          const saved = localStorage.getItem('rt_styles');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) currentStyles = parsed;
+          }
+        } catch (e) {}
+
+        let currentActiveStyleId = 'style-executive';
+        try {
+          const saved = localStorage.getItem('rt_active_style_id');
+          if (saved) currentActiveStyleId = saved;
+        } catch (e) {}
+
         if (cloudData) {
           if (cloudData.profile && Array.isArray(cloudData.profile.experiences)) {
             setParsedProfile(cloudData.profile);
@@ -283,10 +302,36 @@ export default function App() {
           } else {
             setJobsList([]);
           }
-          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles) && cloudData.resumeStyles.length > 0) {
-            setResumeStyles(cloudData.resumeStyles);
-          } else if (currentUser?.uid) {
-            saveUserDataToFirestore(currentUser.uid, { resumeStyles });
+
+          // Smart Style Merge: Preserves local custom created AI styles AND syncs cloud styles
+          const styleMap = new Map<string, ResumeStyle>();
+          DEFAULT_RESUME_STYLES.forEach(s => styleMap.set(s.id, s));
+          if (cloudData.resumeStyles && Array.isArray(cloudData.resumeStyles)) {
+            cloudData.resumeStyles.forEach(s => styleMap.set(s.id, s));
+          }
+          currentStyles.forEach(s => styleMap.set(s.id, s)); // Local custom styles preserved 100%
+
+          const mergedStyles = Array.from(styleMap.values());
+          setResumeStyles(mergedStyles);
+          try {
+            localStorage.setItem('rt_styles', JSON.stringify(mergedStyles));
+          } catch (e) {}
+
+          const targetActiveId = cloudData.activeStyleId && mergedStyles.some(s => s.id === cloudData.activeStyleId)
+            ? cloudData.activeStyleId
+            : (mergedStyles.some(s => s.id === currentActiveStyleId) ? currentActiveStyleId : mergedStyles[0].id);
+
+          setActiveStyleId(targetActiveId);
+          try {
+            localStorage.setItem('rt_active_style_id', targetActiveId);
+          } catch (e) {}
+
+          // Ensure Firestore is updated with the complete merged styles set
+          if (currentUser?.uid) {
+            saveUserDataToFirestore(currentUser.uid, {
+              resumeStyles: mergedStyles,
+              activeStyleId: targetActiveId
+            });
           }
         } else {
           // Brand New Firestore User -> Initialize 100% Clean Blank Profile & 0 Resumes
@@ -309,46 +354,52 @@ export default function App() {
     }
   }, [currentUser?.uid]);
 
-  // Sync to user-scoped localStorage & Firestore automatically ON MUTATIONS AFTER Cloud Load
+  // Dual-Persistence Auto-Sync (LocalStorage + Firestore)
   useEffect(() => {
-    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem(`rt_profile_${currentUser.uid}`, JSON.stringify(parsedProfile));
+      localStorage.setItem('rt_profile', JSON.stringify(parsedProfile));
     } catch (e) {}
-    if (isCloudDataLoaded) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { profile: parsedProfile });
     }
   }, [parsedProfile, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
-    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem(`rt_resumes_${currentUser.uid}`, JSON.stringify(resumes));
+      localStorage.setItem('rt_resumes', JSON.stringify(resumes));
+      if (activeResumeId) localStorage.setItem('rt_active_resume_id', activeResumeId);
     } catch (e) {}
-    if (isCloudDataLoaded) {
-      saveUserDataToFirestore(currentUser.uid, { resumes });
+    if (currentUser?.uid && isCloudDataLoaded) {
+      saveUserDataToFirestore(currentUser.uid, { resumes, activeStyleId });
     }
-  }, [resumes, currentUser?.uid, isCloudDataLoaded]);
+  }, [resumes, activeResumeId, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
-    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem(`rt_jobs_${currentUser.uid}`, JSON.stringify(jobsList));
+      localStorage.setItem('rt_jobs', JSON.stringify(jobsList));
     } catch (e) {}
-    if (isCloudDataLoaded) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { jobsList });
     }
   }, [jobsList, currentUser?.uid, isCloudDataLoaded]);
 
   useEffect(() => {
-    if (!currentUser?.uid) return;
     try {
-      localStorage.setItem(`rt_styles_${currentUser.uid}`, JSON.stringify(resumeStyles));
+      localStorage.setItem('rt_styles', JSON.stringify(resumeStyles));
     } catch (e) {}
-    if (isCloudDataLoaded) {
+    if (currentUser?.uid && isCloudDataLoaded) {
       saveUserDataToFirestore(currentUser.uid, { resumeStyles });
     }
   }, [resumeStyles, currentUser?.uid, isCloudDataLoaded]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rt_active_style_id', activeStyleId);
+    } catch (e) {}
+    if (currentUser?.uid && isCloudDataLoaded) {
+      saveUserDataToFirestore(currentUser.uid, { activeStyleId });
+    }
+  }, [activeStyleId, currentUser?.uid, isCloudDataLoaded]);
 
   const forceSyncToCloud = async () => {
     if (!currentUser?.uid || !isFirebaseConfigured) return;
@@ -369,6 +420,27 @@ export default function App() {
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  const getElementOffsetTop = (el: HTMLElement, parent: HTMLElement): number => {
+    const elRect = el.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+    return elRect.top - parentRect.top;
+  };
+
+  const cropCanvas = (sourceCanvas: HTMLCanvasElement, cropY: number, cropHeight: number): string => {
+    const destCanvas = document.createElement('canvas');
+    destCanvas.width = sourceCanvas.width;
+    destCanvas.height = Math.max(1, Math.floor(cropHeight));
+    const ctx = destCanvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(
+        sourceCanvas,
+        0, Math.floor(cropY), sourceCanvas.width, Math.floor(cropHeight),
+        0, 0, sourceCanvas.width, Math.floor(cropHeight)
+      );
+    }
+    return destCanvas.toDataURL('image/png');
+  };
+
   const handleDownloadPdf = async (resumeToDownload?: ResumeItem) => {
     const targetResume = resumeToDownload || activeResume;
     if (!targetResume) return;
@@ -378,9 +450,6 @@ export default function App() {
     }
 
     setIsGeneratingPdf(true);
-    let originalWidth = '';
-    let originalMinWidth = '';
-    const modifiedInlineStyles: { el: HTMLElement; ls: string; ws: string }[] = [];
 
     try {
       await new Promise(r => setTimeout(r, 150));
@@ -391,98 +460,119 @@ export default function App() {
         return;
       }
 
-      if (document.fonts) {
-        try {
-          await document.fonts.ready;
-        } catch (e) {}
-      }
-
-      // Save original container styles
-      originalWidth = element.style.width;
-      originalMinWidth = element.style.minWidth;
-
-      // Strip outer card borders/shadows during canvas capture without distorting live layout
-      element.style.border = 'none';
-      element.style.boxShadow = 'none';
-      element.style.borderRadius = '0px';
-
-      // Directly normalize inline letter-spacing and word-spacing on every child node
-      // (Bypasses Firefox Gecko computed style cache delay during html2canvas traversal)
-      const childNodes = element.querySelectorAll('*');
-      childNodes.forEach((node) => {
-        const htmlEl = node as HTMLElement;
-        if (htmlEl.style) {
-          modifiedInlineStyles.push({
-            el: htmlEl,
-            ls: htmlEl.style.letterSpacing,
-            ws: htmlEl.style.wordSpacing
-          });
-          htmlEl.style.letterSpacing = 'normal';
-          htmlEl.style.wordSpacing = 'normal';
-        }
-      });
-
       const candidateName = parsedProfile.name
         ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
         : 'Candidate';
       const resumeTitle = targetResume.title.trim().replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `${candidateName}_${resumeTitle}.pdf`;
 
-      // Dynamically load html2pdf.js for client-side PDF compilation
-      // @ts-ignore
-      const html2pdfModule = await import('html2pdf.js');
-      const html2pdf = html2pdfModule.default || html2pdfModule;
+      const pdfBgColor = activeStyle.theme.bgColor || '#ffffff';
 
-      const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+      const elementWidth = element.clientWidth || 800;
+      const initialHeight = element.clientHeight || 1100;
+      const page1HeightPx = Math.floor((elementWidth * 11) / 8.5); // 1 Letter page height in DOM pixels (e.g. 1035px)
 
-      // Standard US Letter width (800px) or element's unconstrained scrollWidth to prevent right-edge clipping
-      const documentWidth = Math.max(800, element.scrollWidth || 0);
-      const documentHeight = Math.max(element.scrollHeight || 0, element.clientHeight || 0);
+      // Smart DOM Spacer Pushing: Identify the element that crosses page1HeightPx and push it cleanly to Page 2
+      const insertedSpacers: HTMLElement[] = [];
 
-      const html2canvasConfig: any = {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        letterRendering: false,
-        foreignObjectRendering: isMobileDevice,
-        scrollX: 0,
-        scrollY: 0
-      };
+      if (initialHeight > page1HeightPx + 20) {
+        const breakables = element.querySelectorAll('.pdf-card-block, li, p, h2, h3, .pdf-break-target');
+        let breakTarget: HTMLElement | null = null;
 
-      if (!isMobileDevice) {
-        html2canvasConfig.width = documentWidth;
-        html2canvasConfig.height = documentHeight;
-        html2canvasConfig.windowWidth = documentWidth;
+        breakables.forEach((item) => {
+          const htmlEl = item as HTMLElement;
+          const itemTop = getElementOffsetTop(htmlEl, element);
+          const itemBottom = itemTop + htmlEl.offsetHeight;
+
+          const isHeader = htmlEl.tagName === 'H2' || htmlEl.tagName === 'H3' || htmlEl.classList.contains('pdf-section-header');
+
+          if (isHeader) {
+            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 50)) {
+              if (!breakTarget || getElementOffsetTop(breakTarget, element) > itemTop) {
+                breakTarget = htmlEl;
+              }
+            }
+          } else {
+            if (itemTop < page1HeightPx && itemBottom > page1HeightPx) {
+              let target = htmlEl;
+              const prev = htmlEl.previousElementSibling as HTMLElement;
+              if (prev && (prev.tagName === 'H2' || prev.tagName === 'H3' || prev.classList.contains('pdf-section-header'))) {
+                target = prev;
+              }
+              if (!breakTarget || getElementOffsetTop(breakTarget, element) > getElementOffsetTop(target, element)) {
+                breakTarget = target;
+              }
+            }
+          }
+        });
+
+        if (breakTarget) {
+          const targetTop = getElementOffsetTop(breakTarget, element);
+          const pushAmount = Math.max(10, Math.ceil(page1HeightPx - targetTop + 16));
+
+          const spacer = document.createElement('div');
+          spacer.className = 'pdf-break-spacer-temp';
+          spacer.style.height = `${pushAmount}px`;
+          spacer.style.width = '100%';
+          spacer.style.pointerEvents = 'none';
+
+          const targetEl = breakTarget as HTMLElement;
+          if (targetEl && targetEl.parentNode) {
+            targetEl.parentNode.insertBefore(spacer, targetEl);
+            insertedSpacers.push(spacer);
+          }
+        }
       }
 
-      const opt = {
-        margin: [0, 0, 0, 0] as [number, number, number, number],
-        filename: filename,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: html2canvasConfig,
-        jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
-        pagebreak: { mode: ['css', 'legacy'] }
-      };
+      // 1. Render updated DOM to high-DPI HTML Canvas using toCanvas
+      const fullCanvas = await toCanvas(element, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: pdfBgColor
+      });
 
-      await html2pdf().set(opt).from(element).save();
+      // Remove temporary DOM spacers immediately after canvas capture
+      insertedSpacers.forEach(spacer => {
+        if (spacer.parentNode) spacer.parentNode.removeChild(spacer);
+      });
+
+      const pdf = new jsPDF({ unit: 'in', format: 'letter', orientation: 'portrait' });
+      const updatedHeight = element.clientHeight || initialHeight;
+
+      // If document fits on 1 page:
+      if (updatedHeight <= page1HeightPx + 20) {
+        pdf.setFillColor(pdfBgColor);
+        pdf.rect(0, 0, 8.5, 11.0, 'F');
+        pdf.addImage(fullCanvas.toDataURL('image/png'), 'PNG', 0, 0, 8.5, (updatedHeight * 8.5) / elementWidth);
+        pdf.save(filename);
+        return;
+      }
+
+      // Multi-Page export using exact page height canvas slicing
+      const scale = fullCanvas.width / elementWidth;
+      const page1CanvasHeight = Math.floor(page1HeightPx * scale);
+
+      const page1Png = cropCanvas(fullCanvas, 0, page1CanvasHeight);
+      const remainingCanvasHeight = fullCanvas.height - page1CanvasHeight;
+      const page2Png = cropCanvas(fullCanvas, page1CanvasHeight, remainingCanvasHeight);
+
+      // Page 1 (Full 11.0 in height)
+      pdf.setFillColor(pdfBgColor);
+      pdf.rect(0, 0, 8.5, 11.0, 'F');
+      pdf.addImage(page1Png, 'PNG', 0, 0, 8.5, 11.0);
+
+      // Page 2 (Full 11.0 in height with 0.4in top margin)
+      pdf.addPage('letter', 'portrait');
+      pdf.setFillColor(pdfBgColor);
+      pdf.rect(0, 0, 8.5, 11.0, 'F');
+      const page2NaturalHeightInches = (remainingCanvasHeight * 8.5) / fullCanvas.width;
+      pdf.addImage(page2Png, 'PNG', 0, 0.4, 8.5, Math.min(10.6, page2NaturalHeightInches));
+
+      pdf.save(filename);
     } catch (err) {
       console.error('Client-side PDF generation error:', err);
       window.print();
     } finally {
-      const element = document.getElementById('resume-document-pdf-area');
-      if (element) {
-        element.style.width = originalWidth;
-        element.style.minWidth = originalMinWidth;
-        element.style.border = '';
-        element.style.boxShadow = '';
-        element.style.borderRadius = '';
-      }
-      modifiedInlineStyles.forEach(item => {
-        if (item.el) {
-          item.el.style.letterSpacing = item.ls;
-          item.el.style.wordSpacing = item.ws;
-        }
-      });
       setIsGeneratingPdf(false);
     }
   };
@@ -647,7 +737,7 @@ export default function App() {
                   </div>
                   <div className="flex flex-wrap gap-0.5 mt-0.5">
                     {['Python', 'C++', 'Ray', 'AWS'].map(sk => (
-                      <span key={sk} className="px-0.5 py-0.2 rounded font-mono border text-[3.5px]" style={{ borderColor: theme.dividerColor, color: theme.textColor }}>
+                      <span key={sk} className="px-0.5 py-0.2 rounded border text-[3.5px]" style={{ borderColor: theme.dividerColor, color: theme.textColor }}>
                         {sk}
                       </span>
                     ))}
@@ -754,13 +844,13 @@ export default function App() {
                 {theme.skillsDisplayStyle === 'pill-badges' ? (
                   <div className="flex flex-wrap gap-0.5 mt-0.5">
                     {['Python', 'TypeScript', 'C++', 'AWS', 'Ray'].map(sk => (
-                      <span key={sk} className="px-1 py-0.2 rounded-full font-mono text-[3.5px] border" style={{ borderColor: theme.dividerColor, backgroundColor: theme.cardBgColor || theme.bgColor }}>
+                      <span key={sk} className="px-1 py-0.2 rounded-full text-[3.5px] border" style={{ borderColor: theme.dividerColor, backgroundColor: theme.cardBgColor || theme.bgColor }}>
                         {sk}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-[4px] font-mono opacity-90 mt-0.5">
+                  <div className="text-[4px] opacity-90 mt-0.5">
                     Python • TypeScript • C++ • AWS • Ray • MySQL
                   </div>
                 )}
@@ -972,25 +1062,22 @@ export default function App() {
         });
       }
 
-      // 2. Auto-generate About Card if missing in Master Profile
-      const existingAboutCard = (parsedProfile?.experiences || []).find(e => (e.category || 'experience') === 'about');
-      if (!existingAboutCard) {
-        const aboutParagraph = res.generatedAboutCard?.paragraph?.trim() ||
-          `Accomplished specialist targeting ${targetRoleName} opportunities with specialized technical expertise and a proven track record delivering scalable solutions.`;
+      // 2. ALWAYS Auto-generate a job-tailored AI About Me / Summary Card for every new tailored resume
+      const aboutParagraph = res.generatedAboutCard?.paragraph?.trim() ||
+        `Accomplished specialist targeting ${targetRoleName} opportunities with specialized technical expertise and a proven track record delivering scalable solutions matching enterprise requirements.`;
 
-        generatedCustomCards.push({
-          id: `ai-tailored-about-${Date.now()}`,
-          category: 'about',
-          title: res.generatedAboutCard?.title || 'Professional Bio & Summary',
-          company: '',
-          period: '',
-          location: '',
-          skills: [],
-          bullets: [aboutParagraph],
-          isAiTailored: true,
-          tailoredForRole: targetRoleName
-        });
-      }
+      generatedCustomCards.push({
+        id: `ai-tailored-about-${Date.now()}`,
+        category: 'about',
+        title: res.generatedAboutCard?.title || 'Professional Bio & Summary',
+        company: '',
+        period: '',
+        location: '',
+        skills: [],
+        bullets: [aboutParagraph],
+        isAiTailored: true,
+        tailoredForRole: targetRoleName
+      });
 
       // Store variant-specific AI tailored cards without altering Master Repository
       setWizardCustomTailoredCards(generatedCustomCards);
@@ -1131,13 +1218,14 @@ export default function App() {
 
   const handleImportYaml = (mode: 'merge' | 'replace') => {
     setPasteYamlError('');
-    if (!pasteYamlInput.trim()) {
+    const rawInput = cleanYamlCodeBlock(pasteYamlInput);
+    if (!rawInput.trim()) {
       setPasteYamlError('Please paste valid YAML content.');
       return;
     }
 
     try {
-      const parsed = yaml.load(pasteYamlInput) as MasterProfile;
+      const parsed = yaml.load(rawInput) as MasterProfile;
       if (!parsed || typeof parsed !== 'object') {
         throw new Error('Invalid YAML format.');
       }
@@ -1710,14 +1798,22 @@ export default function App() {
                 </div>
 
                 {/* Horizontal Scrollable List of Portrait Document Tiles */}
-                <div className="overflow-x-auto max-w-full pb-2">
-                  <div className="flex space-x-3.5 min-w-max">
+                <div className="overflow-x-auto max-w-full pt-3 pb-2 px-1">
+                  <div className="flex space-x-3.5 min-w-max pt-1">
                     {resumeStyles.map(st => {
                       const isActive = activeStyleId === st.id;
                       return (
                         <div
                           key={st.id}
-                          onClick={() => setActiveStyleId(st.id)}
+                          onClick={() => {
+                            setActiveStyleId(st.id);
+                            try {
+                              localStorage.setItem('rt_active_style_id', st.id);
+                            } catch (e) {}
+                            if (currentUser?.uid) {
+                              saveUserDataToFirestore(currentUser.uid, { activeStyleId: st.id });
+                            }
+                          }}
                           className={`cursor-pointer group relative transition-all ${
                             isActive ? 'ring-2 ring-indigo-500 scale-[1.03] shadow-xl' : 'opacity-90 hover:opacity-100'
                           }`}
@@ -1758,7 +1854,7 @@ export default function App() {
                           </div>
 
                           {isActive && (
-                            <span className="absolute -top-2 -right-1 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow border border-indigo-400 z-10">
+                            <span className="absolute -top-2.5 right-1.5 bg-indigo-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg border border-indigo-400 z-10">
                               ✓ Active
                             </span>
                           )}
@@ -2363,9 +2459,8 @@ export default function App() {
                     {/* Dynamic Header Layout Renderer */}
                     {activeStyle.theme.headerAlignment === 'split-right' ? (
                       <div 
-                        className={`pb-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : ''}`}
+                        className={`transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : ''}`}
                         style={{
-                          borderBottom: activeStyle.theme.headerBgColor ? 'none' : `2px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`,
                           backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
                         }}
                       >
@@ -2387,12 +2482,11 @@ export default function App() {
                       </div>
                     ) : (
                       <div 
-                        className={`pb-4 transition-all ${
+                        className={`transition-all ${
                           activeStyle.theme.headerAlignment === 'left' ? 'text-left' :
                           activeStyle.theme.headerAlignment === 'right' ? 'text-right' : 'text-center'
                         } ${activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor ? 'p-4 rounded-xl shadow-md mb-2' : ''}`}
                         style={{
-                          borderBottom: (activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor) ? 'none' : `2px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`,
                           backgroundColor: activeStyle.theme.headerBgColor || 'transparent'
                         }}
                       >
@@ -2409,6 +2503,9 @@ export default function App() {
                           {parsedProfile.email} • {parsedProfile.phone} • {parsedProfile.location}
                         </p>
                       </div>
+                    )}
+                    {!(activeStyle.theme.layout === 'header-banner' || activeStyle.theme.headerBgColor) && (
+                      <div className="w-full h-[2px] mt-2 mb-3" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                     )}
 
                     {/* Layout Body Renderer */}
@@ -2434,10 +2531,11 @@ export default function App() {
                             if (totalAboutItems.length === 0) return null;
 
                             return (
-                              <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
+                              <div className="space-y-1 mb-2">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2" style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   About Me
                                 </h3>
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalAboutItems.map(exp => (
                                   <p key={exp.id} className="text-[10px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
                                     {formatBulletText(exp.bullets?.[0] || '')}
@@ -2456,13 +2554,14 @@ export default function App() {
                             if (!activeSkills || activeSkills.length === 0) return null;
 
                             return (
-                              <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
+                              <div className="space-y-1 mb-2">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2" style={{ color: activeStyle.theme.primaryColor }}>
                                   Technical Skills
                                 </h3>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
                                   {activeSkills.map(sk => (
-                                    <span key={sk} className="text-[10px] px-2 py-0.5 rounded font-mono border" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
+                                    <span key={sk} className="pdf-break-target text-[10px] px-2.5 pt-1 pb-1.5 rounded font-semibold border inline-block leading-none align-middle shadow-xs" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
                                       {sk}
                                     </span>
                                   ))}
@@ -2485,9 +2584,10 @@ export default function App() {
 
                             return (
                               <div key={sec} className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2 capitalize" style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                                   {sec}
                                 </h2>
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => {
                                   const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
                                   const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
@@ -2500,13 +2600,16 @@ export default function App() {
                                         {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
                                       </div>
                                       {exp.skills && exp.skills.length > 0 && (
-                                        <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                        <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                           Skills: {exp.skills.join(', ')}
                                         </div>
                                       )}
-                                      <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                      <ul className="space-y-1 text-[11px] opacity-90 pl-1" style={{ color: activeStyle.theme.textColor }}>
                                         {exp.bullets?.map((b, i) => (
-                                          <li key={i}>{formatBulletText(b)}</li>
+                                          <li key={i} className="flex items-start space-x-2">
+                                            <span className="select-none shrink-0 text-[10px] leading-relaxed font-bold mt-[1px]" style={{ color: activeStyle.theme.accentColor || activeStyle.theme.primaryColor }}>•</span>
+                                            <span className="flex-1 leading-relaxed">{formatBulletText(b)}</span>
+                                          </li>
                                         ))}
                                       </ul>
                                     </div>
@@ -2533,9 +2636,10 @@ export default function App() {
 
                             return (
                               <div key={sec} className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
+                                <h2 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2 capitalize" style={{ color: activeStyle.theme.primaryColor }}>
                                   {sec}
                                 </h2>
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => {
                                   const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
                                   const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
@@ -2548,13 +2652,16 @@ export default function App() {
                                         {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
                                       </div>
                                       {exp.skills && exp.skills.length > 0 && (
-                                        <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                        <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                           Skills: {exp.skills.join(', ')}
                                         </div>
                                       )}
-                                      <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                      <ul className="space-y-1 text-[11px] opacity-90 pl-1" style={{ color: activeStyle.theme.textColor }}>
                                         {exp.bullets?.map((b, i) => (
-                                          <li key={i}>{formatBulletText(b)}</li>
+                                          <li key={i} className="flex items-start space-x-2">
+                                            <span className="select-none shrink-0 text-[10px] leading-relaxed font-bold mt-[1px]" style={{ color: activeStyle.theme.accentColor || activeStyle.theme.primaryColor }}>•</span>
+                                            <span className="flex-1 leading-relaxed">{formatBulletText(b)}</span>
+                                          </li>
                                         ))}
                                       </ul>
                                     </div>
@@ -2582,13 +2689,14 @@ export default function App() {
                             if (!activeSkills || activeSkills.length === 0) return null;
 
                             return (
-                              <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
+                              <div className="space-y-1 mb-2">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2" style={{ color: activeStyle.theme.primaryColor }}>
                                   Technical Skills
                                 </h3>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
                                   {activeSkills.map(sk => (
-                                    <span key={sk} className="text-[10px] px-2 py-0.5 rounded font-mono border" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
+                                    <span key={sk} className="pdf-break-target text-[10px] px-2.5 pt-1 pb-1.5 rounded font-semibold border inline-block leading-none align-middle shadow-xs" style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.textColor, backgroundColor: activeStyle.theme.bgColor }}>
                                       {sk}
                                     </span>
                                   ))}
@@ -2608,10 +2716,11 @@ export default function App() {
                             if (totalAboutItems.length === 0) return null;
 
                             return (
-                              <div className="space-y-1.5">
-                                <h3 className="text-[11px] font-bold uppercase tracking-wider pb-0.5" style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor }}>
+                              <div className="space-y-1 mb-2">
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2" style={{ color: activeStyle.theme.primaryColor }}>
                                   About Me
                                 </h3>
+                                <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalAboutItems.map(exp => (
                                   <p key={exp.id} className="text-[10px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
                                     {formatBulletText(exp.bullets?.[0] || '')}
@@ -2636,13 +2745,14 @@ export default function App() {
                           if (totalAboutItems.length === 0) return null;
 
                           return (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1 mb-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
+                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2"
+                                style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 About Me
                               </h2>
+                              <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {totalAboutItems.map(exp => (
                                 <p key={exp.id} className="text-[11px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
                                   {formatBulletText(exp.bullets?.[0] || '')}
@@ -2663,19 +2773,20 @@ export default function App() {
                           const displayStyle = activeStyle.theme.skillsDisplayStyle || 'comma-separated';
 
                           return (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1 mb-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider border-b pb-0.5"
-                                style={{ borderColor: activeStyle.theme.dividerColor, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
+                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2"
+                                style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 Technical Skills & Core Competencies
                               </h2>
+                              <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {displayStyle === 'pill-badges' ? (
                                 <div className="flex flex-wrap gap-1.5 pt-0.5">
                                   {activeSkills.map(sk => (
                                     <span
                                       key={sk}
-                                      className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold border shadow-xs"
+                                      className="pdf-break-target text-[10px] px-2.5 pt-1 pb-1.5 rounded-full font-semibold border shadow-xs inline-block leading-none align-middle"
                                       style={{
                                         borderColor: activeStyle.theme.dividerColor,
                                         color: activeStyle.theme.textColor,
@@ -2687,7 +2798,7 @@ export default function App() {
                                   ))}
                                 </div>
                               ) : displayStyle === 'bulleted-grid' ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px] font-mono" style={{ color: activeStyle.theme.textColor }}>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]" style={{ color: activeStyle.theme.textColor }}>
                                   {activeSkills.map(sk => (
                                     <div key={sk} className="flex items-center space-x-1">
                                       <span style={{ color: activeStyle.theme.accentColor }}>•</span>
@@ -2696,7 +2807,7 @@ export default function App() {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-[11px] leading-relaxed font-mono" style={{ color: activeStyle.theme.textColor }}>
+                                <p className="text-[11px] leading-relaxed" style={{ color: activeStyle.theme.textColor }}>
                                   {activeSkills.join(' • ')}
                                 </p>
                               )}
@@ -2717,11 +2828,12 @@ export default function App() {
                           return (
                             <div key={sec} className="space-y-2">
                               <h2 
-                                className="text-[11px] font-bold uppercase tracking-wider pb-0.5 capitalize"
-                                style={{ borderBottom: `1.5px solid ${activeStyle.theme.dividerColor || '#cbd5e1'}`, color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
+                                className="text-[11px] font-bold uppercase tracking-wider leading-none pt-1 pb-2 capitalize"
+                                style={{ color: activeStyle.theme.primaryColor, pageBreakAfter: 'avoid', breakAfter: 'avoid' }}
                               >
                                 {sec}
                               </h2>
+                              <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                               {totalItems.map(exp => {
                                 const hasCompany = exp.company && exp.company.trim() && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
                                 const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
@@ -2741,13 +2853,16 @@ export default function App() {
                                       {companyPeriodText && <span className="font-semibold opacity-80" style={{ color: activeStyle.theme.secondaryColor }}>{companyPeriodText}</span>}
                                     </div>
                                     {exp.skills && exp.skills.length > 0 && (
-                                      <div className="text-[10px] font-mono opacity-70" style={{ color: activeStyle.theme.accentColor }}>
+                                      <div className="text-[10px] opacity-70" style={{ color: activeStyle.theme.accentColor }}>
                                         Skills: {exp.skills.join(', ')}
                                       </div>
                                     )}
-                                    <ul className="space-y-1 text-[11px] list-disc list-inside opacity-90" style={{ color: activeStyle.theme.textColor }}>
+                                    <ul className="space-y-1 text-[11px] opacity-90 pl-1" style={{ color: activeStyle.theme.textColor }}>
                                       {exp.bullets?.map((b, i) => (
-                                        <li key={i}>{formatBulletText(b)}</li>
+                                        <li key={i} className="flex items-start space-x-2">
+                                          <span className="select-none shrink-0 text-[10px] leading-relaxed font-bold mt-[1px]" style={{ color: activeStyle.theme.accentColor || activeStyle.theme.primaryColor }}>•</span>
+                                          <span className="flex-1 leading-relaxed">{formatBulletText(b)}</span>
+                                        </li>
                                       ))}
                                     </ul>
                                   </div>
@@ -3939,28 +4054,40 @@ export default function App() {
                   {previewAiStyle && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!previewAiStyle) return;
                         let updatedStyles: ResumeStyle[];
+                        const targetStyleId = editingStyle ? editingStyle.id : previewAiStyle.id;
                         if (editingStyle) {
                           updatedStyles = resumeStyles.map(s => s.id === editingStyle.id ? previewAiStyle : s);
-                          setActiveStyleId(editingStyle.id);
                         } else {
                           updatedStyles = [previewAiStyle, ...resumeStyles];
-                          setActiveStyleId(previewAiStyle.id);
                         }
                         setResumeStyles(updatedStyles);
+                        setActiveStyleId(targetStyleId);
+
+                        // Link active style directly to active resume item
+                        let updatedResumes = resumes;
+                        if (activeResumeId) {
+                          updatedResumes = resumes.map(r => r.id === activeResumeId ? { ...r, styleId: targetStyleId } : r);
+                          setResumes(updatedResumes);
+                        }
+
                         setIsAiStyleModalOpen(false);
 
-                        // Direct immediate dual-save to LocalStorage and Firestore
-                        const storageUid = currentUser?.uid || 'guest';
+                        // Synchronous Dual-Save to LocalStorage and Firestore Cloud
                         try {
-                          localStorage.setItem(`rt_styles_${storageUid}`, JSON.stringify(updatedStyles));
                           localStorage.setItem('rt_styles', JSON.stringify(updatedStyles));
+                          localStorage.setItem('rt_active_style_id', targetStyleId);
+                          localStorage.setItem('rt_resumes', JSON.stringify(updatedResumes));
                         } catch (e) {}
 
                         if (currentUser?.uid) {
-                          saveUserDataToFirestore(currentUser.uid, { resumeStyles: updatedStyles });
+                          await saveUserDataToFirestore(currentUser.uid, {
+                            resumeStyles: updatedStyles,
+                            activeStyleId: targetStyleId,
+                            resumes: updatedResumes
+                          });
                         }
                       }}
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-lg transition whitespace-nowrap"

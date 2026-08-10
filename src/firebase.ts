@@ -88,30 +88,46 @@ export interface UserStoreData {
   resumes?: ResumeItem[];
   jobsList?: JobRecord[];
   resumeStyles?: ResumeStyle[];
+  activeStyleId?: string;
 }
 
 export async function saveUserDataToFirestore(userId: string, data: UserStoreData): Promise<void> {
-  if (!isFirebaseConfigured || !userId) return;
+  if (!isFirebaseConfigured || !userId) {
+    addDebugLog('warn', `saveUserDataToFirestore skipped: isConfigured=${isFirebaseConfigured}, userId=${userId}`);
+    return;
+  }
   try {
+    // Strip undefined properties recursively so Firestore setDoc never fails on undefined values
+    const cleanData = JSON.parse(JSON.stringify(data));
     const userDocRef = doc(db, 'users', userId);
     await setDoc(userDocRef, {
-      ...data,
+      ...cleanData,
       updatedAt: new Date().toISOString()
     }, { merge: true });
-  } catch (error) {
+    addDebugLog('success', `Saved data to Firestore for user ${userId}`, Object.keys(data));
+  } catch (error: any) {
+    addDebugLog('error', `Firestore write error for user ${userId}: ${error?.message || error}`, error);
     console.error('Firestore write error:', error);
   }
 }
 
 export async function loadUserDataFromFirestore(userId: string): Promise<UserStoreData | null> {
-  if (!isFirebaseConfigured || !userId) return null;
+  if (!isFirebaseConfigured || !userId) {
+    addDebugLog('warn', `loadUserDataFromFirestore skipped: isConfigured=${isFirebaseConfigured}, userId=${userId}`);
+    return null;
+  }
   try {
     const userDocRef = doc(db, 'users', userId);
     const snap = await getDoc(userDocRef);
     if (snap.exists()) {
-      return snap.data() as UserStoreData;
+      const data = snap.data() as UserStoreData;
+      addDebugLog('success', `Loaded data from Firestore for user ${userId}`, Object.keys(data));
+      return data;
+    } else {
+      addDebugLog('info', `No Firestore document exists for user ${userId}`);
     }
-  } catch (error) {
+  } catch (error: any) {
+    addDebugLog('error', `Firestore read error for user ${userId}: ${error?.message || error}`, error);
     console.error('Firestore read error:', error);
   }
   return null;

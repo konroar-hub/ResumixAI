@@ -29,6 +29,7 @@ export interface ResumeItem {
   selectedExpIds: string[];
   selectedSkills?: string[];
   customExperiences?: ExperienceItem[];
+  styleId?: string;
 }
 
 export interface MasterProfile {

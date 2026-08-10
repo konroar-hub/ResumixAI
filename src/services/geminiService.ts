@@ -81,8 +81,6 @@ export async function tailorResumeWithGemini(
       bullets: (e.bullets || []).map(b => (typeof b === 'string' ? b : b?.text || ''))
     }));
 
-    const hasAboutCard = (masterProfile.experiences || []).some(e => (e.category || 'experience') === 'about');
-
     const prompt = `Act as an expert ATS Resume Strategy Engine.
 Analyze the candidate's master cards against the target job posting.
 
@@ -91,7 +89,7 @@ RULES FOR TAILORING:
 2. For EVERY selected 'experience' and 'project' card, rewrite its bullet points to naturally incorporate target job keywords.
    STRICT RULE: Base bullet rewrites STRICTLY on true existing facts in the original bullets. DO NOT FABRICATE OR MAKE UP FALSE CLAIMS OR METRICS.
 3. DO NOT TAILOR EDUCATION CARDS.
-${!hasAboutCard ? "4. AUTO-GENERATE ABOUT CARD: Generate a 2-sentence About Bio summary paragraph (NOT bullet points) tailored for this target role." : "4. If an 'about' card exists, rewrite its paragraph text to fit the target role."}
+4. ALWAYS GENERATE A TAILORED ABOUT CARD: Generate a concise, high-impact 2-sentence Professional Bio & Summary paragraph (NOT bullet points) tailored specifically for this target role.
 
 Return JSON ONLY (no markdown backticks):
 {
@@ -116,7 +114,10 @@ Return JSON ONLY (no markdown backticks):
       ]
     }
   ],
-  ${!hasAboutCard ? '"generatedAboutCard": { "title": "Professional Bio & Summary", "paragraph": "Senior Engineer specializing in scalable web systems and modern frontend architectures. Proven track record delivering high-impact features matching enterprise requirements." }' : '"generatedAboutCard": null'}
+  "generatedAboutCard": {
+    "title": "Professional Bio & Summary",
+    "paragraph": "Senior Engineer specializing in scalable web systems and modern frontend architectures. Proven track record delivering high-impact features matching enterprise requirements."
+  }
 }
 
 CANDIDATE CARDS:
@@ -172,6 +173,17 @@ ${jobPostingText.slice(0, 4000)}`;
 }
 
 /**
+ * Helper function to strip markdown codeblock backticks (```yaml ... ```) from AI output strings
+ */
+export function cleanYamlCodeBlock(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:yaml|yml)?\s*/gi, '');
+  cleaned = cleaned.replace(/\s*```$/gi, '');
+  return cleaned.trim();
+}
+
+/**
  * 2. AI Resume Text-to-YAML Converter (gemini-flash-latest)
  */
 export async function convertResumeTextToYamlWithGemini(resumeText: string): Promise<string> {
@@ -210,7 +222,7 @@ ${resumeText.slice(0, 5000)}`;
     contents: prompt
   });
 
-  return response.text || '';
+  return cleanYamlCodeBlock(response.text || '');
 }
 
 /**
@@ -294,7 +306,7 @@ RULES:
     ]
   });
 
-  return response.text || '';
+  return cleanYamlCodeBlock(response.text || '');
 }
 
 /**
