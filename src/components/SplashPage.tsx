@@ -59,39 +59,39 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
     }
   }, [onEnterApp]);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
+    if (!isFirebaseConfigured) {
+      // Fallback for local demo when Firebase keys are omitted
+      onEnterApp();
+      return;
+    }
     setAuthError('');
     setIsAuthLoading(true);
-    try {
-      if (!isFirebaseConfigured) {
-        // Fallback for local demo when Firebase keys are omitted
+
+    // Call signInWithPopup synchronously within the exact user click event loop
+    signInWithPopup(auth, googleProvider)
+      .then(() => {
+        setIsAuthModalOpen(false);
         onEnterApp();
-        return;
-      }
-      await signInWithPopup(auth, googleProvider);
-      setIsAuthModalOpen(false);
-      onEnterApp();
-    } catch (err: any) {
-      console.warn('Google Sign-in popup notice:', err?.code, err?.message);
-      if (
-        err?.code === 'auth/popup-blocked' || 
-        err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request' ||
-        err?.message?.includes('popup')
-      ) {
-        try {
-          // Seamless fallback to full-page redirect when popup is blocked by browser / CORS
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirectErr: any) {
-          setAuthError(redirectErr?.message || 'Failed to redirect for Google Sign-in');
+      })
+      .catch((err: any) => {
+        console.warn('Google Sign-in popup notice:', err?.code, err?.message);
+        if (
+          err?.code === 'auth/popup-blocked' ||
+          err?.code === 'auth/popup-closed-by-user' ||
+          err?.code === 'auth/cancelled-popup-request' ||
+          err?.message?.includes('popup')
+        ) {
+          signInWithRedirect(auth, googleProvider).catch((redirectErr: any) => {
+            setAuthError(redirectErr?.message || 'Failed to redirect for Google Sign-in');
+          });
+        } else {
+          setAuthError(err?.message || 'Failed to sign in with Google');
         }
-      } else {
-        setAuthError(err?.message || 'Failed to sign in with Google');
-      }
-    } finally {
-      setIsAuthLoading(false);
-    }
+      })
+      .finally(() => {
+        setIsAuthLoading(false);
+      });
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
