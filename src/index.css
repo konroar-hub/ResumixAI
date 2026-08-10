@@ -32,7 +32,6 @@
   }
   
   html, body {
-    background: white !important;
     margin: 0 !important;
     padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
@@ -78,7 +77,6 @@
     border-right: none !important;
     border-left: none !important;
     outline: none !important;
-    background: white !important;
     overflow: visible !important;
   }
 
