@@ -16,17 +16,23 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { MasterProfile, ResumeItem, JobRecord, ResumeStyle } from './types';
 
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-app';
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (projectId !== 'demo-app' ? `${projectId}.firebaseapp.com` : 'demo-app.firebaseapp.com');
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (projectId !== 'demo-app' ? `${projectId}.appspot.com` : 'demo-app.appspot.com');
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'demo-app.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'demo-app.appspot.com',
+  authDomain,
+  projectId,
+  storageBucket,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:123456789:web:abcdef'
 };
 
 export const isFirebaseConfigured = Boolean(
-  import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID
+  import.meta.env.VITE_FIREBASE_API_KEY && 
+  import.meta.env.VITE_FIREBASE_API_KEY !== 'demo-api-key' && 
+  import.meta.env.VITE_FIREBASE_PROJECT_ID
 );
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);

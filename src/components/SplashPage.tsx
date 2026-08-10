@@ -60,22 +60,25 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
   }, [onEnterApp]);
 
   const handleGoogleSignIn = () => {
-    if (!isFirebaseConfigured) {
-      // Fallback for local demo when Firebase keys are omitted
-      onEnterApp();
-      return;
-    }
     setAuthError('');
     setIsAuthLoading(true);
 
+    if (!isFirebaseConfigured) {
+      onEnterApp();
+      return;
+    }
+
     // Call signInWithPopup synchronously within the exact user click event loop
     signInWithPopup(auth, googleProvider)
-      .then(() => {
-        setIsAuthModalOpen(false);
-        onEnterApp();
+      .then((result) => {
+        if (result?.user) {
+          setIsAuthModalOpen(false);
+          onEnterApp();
+        }
       })
       .catch((err: any) => {
         console.warn('Google Sign-in popup notice:', err?.code, err?.message);
+        setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || 'Failed to sign in with Google'}`);
         if (
           err?.code === 'auth/popup-blocked' ||
           err?.code === 'auth/popup-closed-by-user' ||
@@ -83,10 +86,8 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
           err?.message?.includes('popup')
         ) {
           signInWithRedirect(auth, googleProvider).catch((redirectErr: any) => {
-            setAuthError(redirectErr?.message || 'Failed to redirect for Google Sign-in');
+            setAuthError(`[${redirectErr?.code || 'REDIRECT_ERROR'}]: ${redirectErr?.message || 'Failed to redirect for Google Sign-in'}`);
           });
-        } else {
-          setAuthError(err?.message || 'Failed to sign in with Google');
         }
       })
       .finally(() => {
@@ -119,7 +120,8 @@ export const SplashPage: React.FC<SplashPageProps> = ({ onEnterApp, currentUser 
       setIsAuthModalOpen(false);
       onEnterApp();
     } catch (err: any) {
-      setAuthError(err?.message || `Failed to ${authMode}`);
+      console.error('Email Auth error:', err?.code, err?.message);
+      setAuthError(`[${err?.code || 'AUTH_ERROR'}]: ${err?.message || `Failed to ${authMode}`}`);
     } finally {
       setIsAuthLoading(false);
     }
