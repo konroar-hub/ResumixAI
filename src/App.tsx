@@ -416,26 +416,33 @@ export default function App() {
       const html2pdfModule = await import('html2pdf.js');
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
+      const isMobileDevice = typeof window !== 'undefined' && (window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+
       const rect = element.getBoundingClientRect();
       const measuredWidth = Math.max(Math.round(rect.width), element.clientWidth || 750);
       const measuredHeight = Math.max(Math.round(rect.height), element.clientHeight || 1000);
+
+      const html2canvasConfig: any = {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        letterRendering: false,
+        foreignObjectRendering: isMobileDevice,
+        scrollX: 0,
+        scrollY: 0
+      };
+
+      if (!isMobileDevice) {
+        html2canvasConfig.width = measuredWidth;
+        html2canvasConfig.height = measuredHeight;
+        html2canvasConfig.windowWidth = measuredWidth;
+      }
 
       const opt = {
         margin: [0, 0, 0, 0] as [number, number, number, number],
         filename: filename,
         image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          letterRendering: false,
-          foreignObjectRendering: false,
-          width: measuredWidth,
-          height: measuredHeight,
-          windowWidth: measuredWidth,
-          scrollX: 0,
-          scrollY: 0
-        },
+        html2canvas: html2canvasConfig,
         jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
         pagebreak: { mode: ['css', 'legacy'] }
       };
