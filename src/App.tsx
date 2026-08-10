@@ -521,6 +521,25 @@ export default function App() {
     }
   };
 
+  const triggerNativePrint = (targetResume?: ResumeItem) => {
+    const resumeToUse = targetResume || activeResume;
+    const candidateName = parsedProfile?.name ? parsedProfile.name.trim() : '';
+    const resumeTitle = resumeToUse ? resumeToUse.title.trim() : 'Resume';
+
+    const formattedFileName = candidateName 
+      ? `${candidateName} - ${resumeTitle}`
+      : resumeTitle;
+
+    const originalTitle = document.title;
+    document.title = formattedFileName;
+
+    window.print();
+
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
+
   const handleDownloadPdf = async (resumeToDownload?: ResumeItem) => {
     const targetResume = resumeToDownload || activeResume;
     if (!targetResume) return;
@@ -536,7 +555,7 @@ export default function App() {
 
       const element = document.getElementById('resume-document-pdf-area');
       if (!element) {
-        window.print();
+        triggerNativePrint(targetResume);
         return;
       }
 
@@ -657,7 +676,7 @@ export default function App() {
       pdf.save(filename);
     } catch (err) {
       console.error('Client-side PDF generation error:', err);
-      window.print();
+      triggerNativePrint(targetResume);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -2355,7 +2374,7 @@ export default function App() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveResumeId(r.id);
-                                    setTimeout(() => window.print(), 100);
+                                    setTimeout(() => triggerNativePrint(r), 100);
                                   }}
                                   className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold"
                                   title="Vector Print PDF (100% ATS Compatible)"
@@ -2386,7 +2405,7 @@ export default function App() {
                       {activeResume && (
                         <button
                           type="button"
-                          onClick={() => window.print()}
+                          onClick={() => triggerNativePrint()}
                           className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-md transition"
                           title="Native Vector Print to PDF (100% Highlightable Text & ATS Compatible)"
                         >
