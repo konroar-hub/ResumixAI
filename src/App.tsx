@@ -2670,25 +2670,25 @@ export default function App() {
                                 <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => (
                                   <div key={exp.id} className="w-full pdf-card-block mb-3 space-y-0.5">
-                                    <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[11px] leading-snug">
-                                      <div style={{ display: 'table-cell', textAlign: 'left', fontWeight: 'bold', color: activeStyle.theme.textColor }}>
+                                    <div className="flex items-baseline justify-between w-full text-[11px] leading-snug">
+                                      <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                         {exp.title}
-                                      </div>
+                                      </span>
                                       {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                        <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.secondaryColor }} className="font-semibold opacity-80">
+                                        <span className="font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
                                           {exp.period}
-                                        </div>
+                                        </span>
                                       )}
                                     </div>
                                     {(exp.company || exp.location) && (
-                                      <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[10.5px] leading-snug opacity-90">
-                                        <div style={{ display: 'table-cell', textAlign: 'left', fontStyle: 'italic', color: activeStyle.theme.secondaryColor }}>
+                                      <div className="flex items-baseline justify-between w-full text-[10.5px] leading-snug opacity-90">
+                                        <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
                                           {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
-                                        </div>
+                                        </span>
                                         {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                          <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.textColor }} className="opacity-75">
+                                          <span className="text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
                                             {exp.location}
-                                          </div>
+                                          </span>
                                         )}
                                       </div>
                                     )}
@@ -2738,25 +2738,25 @@ export default function App() {
                                 <div className="w-full h-[1.5px] mt-0.5 mb-2.5" style={{ backgroundColor: activeStyle.theme.dividerColor || '#cbd5e1' }} />
                                 {totalItems.map(exp => (
                                   <div key={exp.id} className="w-full pdf-card-block mb-3 space-y-0.5">
-                                    <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[11px] leading-snug">
-                                      <div style={{ display: 'table-cell', textAlign: 'left', fontWeight: 'bold', color: activeStyle.theme.textColor }}>
+                                    <div className="flex items-baseline justify-between w-full text-[11px] leading-snug">
+                                      <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                         {exp.title}
-                                      </div>
+                                      </span>
                                       {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                        <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.secondaryColor }} className="font-semibold opacity-80">
+                                        <span className="font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
                                           {exp.period}
-                                        </div>
+                                        </span>
                                       )}
                                     </div>
                                     {(exp.company || exp.location) && (
-                                      <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[10.5px] leading-snug opacity-90">
-                                        <div style={{ display: 'table-cell', textAlign: 'left', fontStyle: 'italic', color: activeStyle.theme.secondaryColor }}>
+                                      <div className="flex items-baseline justify-between w-full text-[10.5px] leading-snug opacity-90">
+                                        <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
                                           {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
-                                        </div>
+                                        </span>
                                         {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                          <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.textColor }} className="opacity-75">
+                                          <span className="text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
                                             {exp.location}
-                                          </div>
+                                          </span>
                                         )}
                                       </div>
                                     )}
@@ -2949,28 +2949,28 @@ export default function App() {
                               {totalItems.map(exp => {
                                 return (
                                       <div key={exp.id} className={`w-full pdf-card-block mb-3 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
-                                         <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[11px] leading-snug">
-                                           <div style={{ display: 'table-cell', textAlign: 'left', fontWeight: 'bold', color: activeStyle.theme.textColor }}>
-                                             {exp.title}
-                                           </div>
-                                           {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
-                                             <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.secondaryColor }} className="font-semibold opacity-80">
-                                               {exp.period}
-                                             </div>
-                                           )}
-                                         </div>
-                                         {(exp.company || exp.location) && (
-                                           <div style={{ display: 'table', width: '100%', tableLayout: 'fixed' }} className="text-[10.5px] leading-snug opacity-90">
-                                             <div style={{ display: 'table-cell', textAlign: 'left', fontStyle: 'italic', color: activeStyle.theme.secondaryColor }}>
-                                               {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
-                                             </div>
-                                             {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
-                                               <div style={{ display: 'table-cell', textAlign: 'right', whiteSpace: 'nowrap', width: '1%', paddingLeft: '8px', color: activeStyle.theme.textColor }} className="opacity-75">
-                                                 {exp.location}
-                                               </div>
-                                             )}
-                                           </div>
-                                         )}
+                                        <div className="flex items-baseline justify-between w-full text-[11px] leading-snug">
+                                          <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
+                                            {exp.title}
+                                          </span>
+                                          {exp.period && exp.period.trim() && exp.period.trim() !== 'N/A' && (
+                                            <span className="font-semibold text-right opacity-80 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
+                                              {exp.period}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {(exp.company || exp.location) && (
+                                          <div className="flex items-baseline justify-between w-full text-[10.5px] leading-snug opacity-90">
+                                            <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                              {exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A' ? exp.company : ''}
+                                            </span>
+                                            {exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A' && (
+                                              <span className="text-right opacity-75 whitespace-nowrap pl-2" style={{ color: activeStyle.theme.textColor }}>
+                                                {exp.location}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
                                         {exp.skills && exp.skills.length > 0 && (
                                           <div className="text-[10px] opacity-70 text-left pb-0.5" style={{ color: activeStyle.theme.accentColor }}>
                                             Skills: {exp.skills.join(', ')}
