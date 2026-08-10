@@ -115,11 +115,23 @@ Here is the resume to convert:
 [PASTE YOUR RESUME TEXT HERE]`;
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<'splash' | 'app'>('splash');
+  const [viewMode, setViewMode] = useState<'splash' | 'app'>(() => {
+    try {
+      const saved = localStorage.getItem('rt_view_mode');
+      if (saved === 'app') return 'app';
+    } catch (e) {}
+    return 'splash';
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumes' | 'skills' | 'feed' | 'jobs'>('resumes');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rt_view_mode', viewMode);
+    } catch (e) {}
+  }, [viewMode]);
 
   // Observe Firebase Auth State with persistent session restore
   useEffect(() => {
@@ -129,6 +141,9 @@ export default function App() {
         setIsAuthLoading(false);
         if (user) {
           setViewMode('app');
+          try {
+            localStorage.setItem('rt_view_mode', 'app');
+          } catch (e) {}
         }
       });
       return () => unsubscribe();
@@ -136,6 +151,17 @@ export default function App() {
       setIsAuthLoading(false);
     }
   }, []);
+
+  const handleSignOut = () => {
+    if (isFirebaseConfigured) {
+      signOut(auth).catch(e => console.error('Signout error:', e));
+    }
+    setCurrentUser(null);
+    setViewMode('splash');
+    try {
+      localStorage.setItem('rt_view_mode', 'splash');
+    } catch (e) {}
+  };
 
   // LocalStorage Persisted Master Profile State
   const [parsedProfile, setParsedProfile] = useState<MasterProfile>(() => {
@@ -1386,8 +1412,8 @@ export default function App() {
                   {currentUser.email || 'User'}
                 </span>
                 <button
-                  onClick={() => isFirebaseConfigured && signOut(auth)}
-                  className="text-slate-500 hover:text-rose-400 transition"
+                  onClick={handleSignOut}
+                  className="text-slate-500 hover:text-rose-400 transition p-0.5"
                   title="Sign Out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
