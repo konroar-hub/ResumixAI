@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_MASTER_YAML, INITIAL_RESUMES, DEFAULT_JOB_TRACKER, DEFAULT_RESUME_STYLES } from './mockData';
 import { MasterProfile, ExperienceItem, ResumeItem, CardCategory, JobRecord, AtsAnalysisDetails, ResumeStyle } from './types';
+import { exportVectorPdfBlob } from './utils/pdfExport';
 import yaml from 'js-yaml';
 import { toPng, toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
@@ -585,131 +586,9 @@ export default function App() {
     setIsGeneratingPdf(true);
 
     try {
-      await new Promise(r => setTimeout(r, 150));
-
-      const element = document.getElementById('resume-document-pdf-area');
-      if (!element) {
-        triggerNativePrint(targetResume);
-        return;
-      }
-
-      const candidateName = parsedProfile.name
-        ? parsedProfile.name.trim().replace(/[^a-zA-Z0-9]/g, '_')
-        : 'Candidate';
-      const resumeTitle = targetResume.title.trim().replace(/[^a-zA-Z0-9]/g, '_');
-      const filename = `${candidateName}_${resumeTitle}.pdf`;
-
-      const pdfBgColor = activeStyle.theme.bgColor || '#ffffff';
-
-      const elementWidth = element.clientWidth || 800;
-      const initialHeight = element.clientHeight || 1100;
-      const page1HeightPx = Math.floor((elementWidth * 11) / 8.5); // 1 Letter page height in DOM pixels (e.g. 1035px)
-
-      // Smart DOM Spacer Pushing: Identify the element that crosses page1HeightPx and push it cleanly to Page 2
-      const insertedSpacers: HTMLElement[] = [];
-
-      if (initialHeight > page1HeightPx + 20) {
-        const breakables = element.querySelectorAll('.pdf-card-block, li, p, h2, h3, .pdf-break-target');
-        let breakTarget: HTMLElement | null = null;
-
-        breakables.forEach((item) => {
-          const htmlEl = item as HTMLElement;
-          const itemTop = getElementOffsetTop(htmlEl, element);
-          const itemBottom = itemTop + htmlEl.offsetHeight;
-
-          const isHeader = htmlEl.tagName === 'H2' || htmlEl.tagName === 'H3' || htmlEl.classList.contains('pdf-section-header');
-
-          if (isHeader) {
-            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 60)) {
-              if (!breakTarget || getElementOffsetTop(breakTarget, element) > itemTop) {
-                breakTarget = htmlEl;
-              }
-            }
-          } else {
-            if (itemTop < page1HeightPx && itemBottom > (page1HeightPx - 20)) {
-              let target = htmlEl;
-              const prev = htmlEl.previousElementSibling as HTMLElement;
-              if (prev && (prev.tagName === 'H2' || prev.tagName === 'H3' || prev.classList.contains('pdf-section-header'))) {
-                target = prev;
-              }
-              if (!breakTarget || getElementOffsetTop(breakTarget, element) > getElementOffsetTop(target, element)) {
-                breakTarget = target;
-              }
-            }
-          }
-        });
-
-        if (breakTarget) {
-          const targetTop = getElementOffsetTop(breakTarget, element);
-          const pushAmount = Math.max(10, Math.ceil(page1HeightPx - targetTop + 16));
-
-          const spacer = document.createElement('div');
-          spacer.className = 'pdf-break-spacer-temp';
-          spacer.style.height = `${pushAmount}px`;
-          spacer.style.width = '100%';
-          spacer.style.pointerEvents = 'none';
-
-          const targetEl = breakTarget as HTMLElement;
-          if (targetEl && targetEl.parentNode) {
-            targetEl.parentNode.insertBefore(spacer, targetEl);
-            insertedSpacers.push(spacer);
-          }
-        }
-      }
-
-      // 1. Render updated DOM to high-DPI HTML Canvas using toCanvas
-      const fullCanvas = await toCanvas(element, {
-        pixelRatio: 2,
-        cacheBust: true,
-        backgroundColor: pdfBgColor
-      });
-
-      // Remove temporary DOM spacers immediately after canvas capture
-      insertedSpacers.forEach(spacer => {
-        if (spacer.parentNode) spacer.parentNode.removeChild(spacer);
-      });
-
-      const pdf = new jsPDF({ unit: 'in', format: 'letter', orientation: 'portrait' });
-      const updatedHeight = element.clientHeight || initialHeight;
-
-      // If document fits on 1 page:
-      if (updatedHeight <= page1HeightPx + 20) {
-        pdf.setFillColor(pdfBgColor);
-        pdf.rect(0, 0, 8.5, 11.0, 'F');
-        pdf.addImage(fullCanvas.toDataURL('image/png'), 'PNG', 0, 0, 8.5, (updatedHeight * 8.5) / elementWidth);
-        
-        // Embed Highlightable Vector Text Layer for ATS Compatibility
-        embedSelectableTextLayer(pdf, element, elementWidth, 0, 1);
-
-        pdf.save(filename);
-        return;
-      }
-
-      // Multi-Page export using exact page height canvas slicing
-      const scale = fullCanvas.width / elementWidth;
-      const page1CanvasHeight = Math.floor(page1HeightPx * scale);
-
-      const page1Png = cropCanvas(fullCanvas, 0, page1CanvasHeight);
-      const remainingCanvasHeight = fullCanvas.height - page1CanvasHeight;
-      const page2Png = cropCanvas(fullCanvas, page1CanvasHeight, remainingCanvasHeight);
-
-      // Page 1 (Full 11.0 in height)
-      pdf.setFillColor(pdfBgColor);
-      pdf.rect(0, 0, 8.5, 11.0, 'F');
-      pdf.addImage(page1Png, 'PNG', 0, 0, 8.5, 11.0);
-      embedSelectableTextLayer(pdf, element, elementWidth, 0, 1);
-
-      // Page 2 (Full 11.0 in height with 0.4in top margin)
-      pdf.addPage('letter', 'portrait');
-      pdf.setFillColor(pdfBgColor);
-      pdf.rect(0, 0, 8.5, 11.0, 'F');
-      const page2NaturalHeightInches = (remainingCanvasHeight * 8.5) / fullCanvas.width;
-      pdf.addImage(page2Png, 'PNG', 0, 0.4, 8.5, Math.min(10.6, page2NaturalHeightInches));
-      embedSelectableTextLayer(pdf, element, elementWidth, page1HeightPx, 2);
-
-      pdf.save(filename);
+      await exportVectorPdfBlob(parsedProfile, targetResume, activeStyle);
     } catch (err) {
-      console.error('Client-side PDF generation error:', err);
+      console.error('Programmatic Vector PDF export error:', err);
       triggerNativePrint(targetResume);
     } finally {
       setIsGeneratingPdf(false);
@@ -2407,14 +2286,13 @@ export default function App() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setActiveResumeId(r.id);
-                                    setTimeout(() => triggerNativePrint(r), 100);
+                                    handleDownloadPdf(r);
                                   }}
                                   className="flex items-center space-x-1 text-[11px] bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-700/60 px-2 py-0.5 rounded transition font-semibold"
-                                  title="Vector Print PDF (100% ATS Compatible)"
+                                  title="Download Vector ATS PDF"
                                 >
-                                  <Printer className="w-3 h-3 text-indigo-400" />
-                                  <span>Print ATS PDF</span>
+                                  <Download className="w-3 h-3 text-indigo-400" />
+                                  <span>Download ATS PDF</span>
                                 </button>
                               </div>
                             </div>
@@ -2439,12 +2317,12 @@ export default function App() {
                       {activeResume && (
                         <button
                           type="button"
-                          onClick={() => triggerNativePrint()}
+                          onClick={() => handleDownloadPdf()}
                           className="flex items-center space-x-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-md transition"
-                          title="Native Vector Print to PDF (100% Highlightable Text & ATS Compatible)"
+                          title="Download Programmatic Vector PDF (100% Deterministic ATS Text Layer)"
                         >
-                          <Printer className="w-4 h-4 text-indigo-200" />
-                          <span>Download / Print ATS PDF</span>
+                          <Download className="w-4 h-4 text-indigo-200" />
+                          <span>Download ATS PDF</span>
                         </button>
                       )}
                     </div>
