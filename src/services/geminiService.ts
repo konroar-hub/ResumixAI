@@ -41,6 +41,17 @@ export interface GeminiJobAnalysis {
   gaps: string[];
 }
 
+export function isRateLimitError(error: any): boolean {
+  const errStr = JSON.stringify(error || '').toLowerCase() + ' ' + String(error?.message || error || '').toLowerCase();
+  return (
+    errStr.includes('429') ||
+    errStr.includes('resource_exhausted') ||
+    errStr.includes('quota') ||
+    errStr.includes('rate limit') ||
+    errStr.includes('too many requests')
+  );
+}
+
 /**
  * 1. AI Job Posting Tailoring & Card Rewriting (gemini-flash-latest)
  * Matches master experience & project cards to target job posting text, extracts skills, rewrites bullets
@@ -568,6 +579,7 @@ Output JSON ONLY matching this exact structure:
     };
   } catch (error) {
     console.error('Gemini Resume Style Generation error:', error);
+    if (isRateLimitError(error)) throw error;
     return {
       id: `style-ai-${Date.now()}`,
       name: 'Custom AI Theme',
@@ -691,6 +703,7 @@ Output ONLY a JSON object:
     };
   } catch (error) {
     console.error('Gemini Resume Style Refinement error:', error);
+    if (isRateLimitError(error)) throw error;
     return existingStyle;
   }
 }

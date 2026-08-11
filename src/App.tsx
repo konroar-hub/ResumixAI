@@ -133,6 +133,37 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumes' | 'skills' | 'feed' | 'jobs'>('resumes');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [apiRateLimitNotice, setApiRateLimitNotice] = useState<{
+    title: string;
+    message: string;
+    waitSeconds: number;
+  } | null>(null);
+
+  const handleApiError = (err: any) => {
+    const errStr = JSON.stringify(err || '').toLowerCase() + ' ' + String(err?.message || err || '').toLowerCase();
+    
+    let retrySeconds = 30;
+    const match = errStr.match(/retry\s+in\s+([\d.]+)\s*s/i) || errStr.match(/retrydelay["']?:\s*["']?(\d+)s?["']?/i);
+    if (match && match[1]) {
+      retrySeconds = Math.ceil(parseFloat(match[1]));
+    }
+
+    if (
+      errStr.includes('429') ||
+      errStr.includes('resource_exhausted') ||
+      errStr.includes('quota') ||
+      errStr.includes('rate limit') ||
+      errStr.includes('too many requests')
+    ) {
+      setApiRateLimitNotice({
+        title: 'High Request Volume',
+        message: 'Our AI service is currently experiencing high demand. Please wait a moment before trying your request again.',
+        waitSeconds: retrySeconds
+      });
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     try {
@@ -637,6 +668,7 @@ export default function App() {
       }));
     } catch (e) {
       console.error('ATS Match Analysis Error:', e);
+      handleApiError(e);
     } finally {
       setAnalyzingJobId(null);
     }
@@ -872,6 +904,7 @@ export default function App() {
             setPasteYamlInput(yamlResult);
           } catch (err: any) {
             setPasteYamlError(err?.message || 'Failed to extract YAML from PDF document.');
+            handleApiError(err);
           } finally {
             setIsLlmGenerating(false);
           }
@@ -894,6 +927,7 @@ export default function App() {
             }
           } catch (err: any) {
             setPasteYamlError(err?.message || 'Failed to convert document text to YAML.');
+            handleApiError(err);
           } finally {
             setIsLlmGenerating(false);
           }
@@ -906,6 +940,7 @@ export default function App() {
       }
     } catch (err: any) {
       setPasteYamlError(err?.message || 'Failed to process uploaded file.');
+      handleApiError(err);
       setIsLlmGenerating(false);
     } finally {
       if (e.target) e.target.value = '';
@@ -926,6 +961,7 @@ export default function App() {
       }
     } catch (e) {
       console.error('AI Bullet Enhance error:', e);
+      handleApiError(e);
     } finally {
       setEnhancingBulletIndex(null);
     }
@@ -943,6 +979,7 @@ export default function App() {
       setPasteYamlInput(yamlResult);
     } catch (e: any) {
       setPasteYamlError(e?.message || 'Failed to convert resume text to YAML.');
+      handleApiError(e);
     } finally {
       setIsLlmGenerating(false);
     }
@@ -1013,6 +1050,7 @@ export default function App() {
       setWizardCategoryIndex(0);
     } catch (e) {
       console.error('AI Tailor Error:', e);
+      handleApiError(e);
     } finally {
       setIsLlmGenerating(false);
     }
@@ -3711,6 +3749,7 @@ export default function App() {
                         }
                       } catch (e) {
                         console.error('Generate/Refine AI Style Error:', e);
+                        handleApiError(e);
                       } finally {
                         setIsGeneratingAiStyle(false);
                       }
