@@ -48,7 +48,8 @@ import {
   analyzeJobMatchWithGemini,
   generateResumeStyleWithGemini,
   refineResumeStyleWithGemini,
-  cleanYamlCodeBlock
+  cleanYamlCodeBlock,
+  isRateLimitError
 } from './services/geminiService';
 import {
   auth,
@@ -140,21 +141,24 @@ export default function App() {
   } | null>(null);
 
   const handleApiError = (err: any) => {
-    const errStr = JSON.stringify(err || '').toLowerCase() + ' ' + String(err?.message || err || '').toLowerCase();
-    
-    let retrySeconds = 30;
-    const match = errStr.match(/retry\s+in\s+([\d.]+)\s*s/i) || errStr.match(/retrydelay["']?:\s*["']?(\d+)s?["']?/i);
-    if (match && match[1]) {
-      retrySeconds = Math.ceil(parseFloat(match[1]));
-    }
+    if (isRateLimitError(err)) {
+      let retrySeconds = 30;
+      const fullText = [
+        err?.message,
+        err?.statusText,
+        err?.details,
+        String(err)
+      ];
+      try {
+        fullText.push(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+      } catch (e) {}
 
-    if (
-      errStr.includes('429') ||
-      errStr.includes('resource_exhausted') ||
-      errStr.includes('quota') ||
-      errStr.includes('rate limit') ||
-      errStr.includes('too many requests')
-    ) {
+      const joinedText = fullText.join(' ');
+      const match = joinedText.match(/retry\s+in\s+([\d.]+)\s*s/i) || joinedText.match(/retrydelay["']?:\s*["']?(\d+)s?["']?/i);
+      if (match && match[1]) {
+        retrySeconds = Math.ceil(parseFloat(match[1]));
+      }
+
       setApiRateLimitNotice({
         title: 'High Request Volume',
         message: 'Our AI service is currently experiencing high demand. Please wait a moment before trying your request again.',
@@ -3817,6 +3821,38 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generic 429 / High Volume Rate Limit Alert Modal */}
+      {apiRateLimitNotice && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[99999] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/50 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 text-center">
+            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-amber-400">
+              <Cpu className="w-6 h-6 animate-pulse" />
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-100">
+                {apiRateLimitNotice.title}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {apiRateLimitNotice.message}
+              </p>
+            </div>
+
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-amber-300 flex items-center justify-center space-x-2">
+              <span>⏱ Please wait ~{apiRateLimitNotice.waitSeconds} seconds before trying your request again.</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setApiRateLimitNotice(null)}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2.5 rounded-xl transition shadow"
+            >
+              Understand & Close
+            </button>
           </div>
         </div>
       )}

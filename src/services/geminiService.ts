@@ -42,13 +42,33 @@ export interface GeminiJobAnalysis {
 }
 
 export function isRateLimitError(error: any): boolean {
-  const errStr = JSON.stringify(error || '').toLowerCase() + ' ' + String(error?.message || error || '').toLowerCase();
+  if (!error) return false;
+
+  const code = error?.code || error?.status || error?.error?.code || error?.error?.status || error?.response?.status;
+  if (code === 429 || code === '429' || code === 'RESOURCE_EXHAUSTED') return true;
+
+  const msgParts: string[] = [
+    error?.message,
+    error?.statusText,
+    error?.error?.message,
+    error?.error?.status,
+    typeof error?.details === 'string' ? error.details : JSON.stringify(error?.details || ''),
+    String(error)
+  ];
+
+  try {
+    msgParts.push(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+  } catch (e) {}
+
+  const fullText = msgParts.filter(Boolean).join(' ').toLowerCase();
+
   return (
-    errStr.includes('429') ||
-    errStr.includes('resource_exhausted') ||
-    errStr.includes('quota') ||
-    errStr.includes('rate limit') ||
-    errStr.includes('too many requests')
+    fullText.includes('429') ||
+    fullText.includes('resource_exhausted') ||
+    fullText.includes('quota') ||
+    fullText.includes('rate limit') ||
+    fullText.includes('too many requests') ||
+    fullText.includes('exceeded your current quota')
   );
 }
 
