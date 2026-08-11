@@ -133,25 +133,25 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
       opacity: 0.85
     },
     sectionContainer: {
-      marginBottom: 12
+      marginBottom: 16
     },
     sectionHeaderWrapper: {
-      marginBottom: 6
+      marginBottom: 8
     },
     sectionTitlePill: {
       fontSize: 11,
       fontWeight: 'bold',
       color: '#ffffff',
       backgroundColor: primaryColor,
-      paddingTop: 3,
-      paddingBottom: 3,
+      paddingTop: 4,
+      paddingBottom: 4,
       paddingLeft: 8,
       paddingRight: 8,
       borderRadius: 4,
       alignSelf: 'flex-start',
       textTransform: 'uppercase',
       letterSpacing: 0.8,
-      marginBottom: 6
+      marginBottom: 8
     },
     sectionTitleMinimalLeft: {
       fontSize: 12,
@@ -163,7 +163,7 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
       borderLeftColor: primaryColor,
       borderLeftStyle: 'solid',
       paddingLeft: 6,
-      marginBottom: 6
+      marginBottom: 8
     },
     sectionTitleStandard: {
       fontSize: 12,
@@ -171,15 +171,15 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
       color: primaryColor,
       textTransform: 'uppercase',
       letterSpacing: 0.8,
-      paddingTop: 2,
-      paddingBottom: 2
+      paddingTop: 3,
+      paddingBottom: 3
     },
     sectionDivider: {
       width: '100%',
       height: 1.5,
       backgroundColor: dividerColor,
-      marginTop: 2,
-      marginBottom: 8
+      marginTop: 4,
+      marginBottom: 10
     },
     aboutText: {
       fontSize: 9.5,
@@ -189,7 +189,7 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     skillsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      marginTop: 2
+      marginTop: 4
     },
     skillBadge: {
       backgroundColor: cardBgColor,
@@ -216,36 +216,36 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
       borderWidth: 0.5,
       borderColor: dividerColor,
       borderRadius: 6,
-      padding: 8,
-      marginBottom: 9
+      padding: 10,
+      marginBottom: 12
     },
     entryBlock: {
-      marginBottom: 9
+      marginBottom: 12
     },
     entryTitleLine: {
       fontSize: 10.5,
       fontWeight: 'bold',
       color: textColor,
-      marginBottom: 2
+      marginBottom: 3
     },
     entrySubLine: {
       fontSize: 9.5,
       color: secondaryColor,
-      marginBottom: 3
+      marginBottom: 4
     },
     skillsSubLine: {
       fontSize: 9,
       color: secondaryColor,
-      marginBottom: 3,
+      marginBottom: 4,
       opacity: 0.85
     },
     bulletList: {
-      marginTop: 2
+      marginTop: 3
     },
     bulletItem: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 3
+      marginBottom: 3.5
     },
     bulletSymbol: {
       width: 10,
