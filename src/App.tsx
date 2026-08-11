@@ -2522,27 +2522,29 @@ export default function App() {
                                 const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
                                 return (
                                       <div key={exp.id} className={`w-full pdf-card-block mb-3.5 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
-                                        {/* Line 1: Job Title / Degree (Left) & Dates (Right) */}
-                                        <div className="flex items-baseline justify-between text-[11.5px] leading-snug">
+                                        {/* Line 1: Job Title / Degree Title */}
+                                        <div className="text-[11.5px] leading-snug">
                                           <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
                                             {exp.title}
                                           </span>
-                                          {hasPeriod && (
-                                            <span className="font-semibold text-[10.5px] shrink-0 pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
-                                              {exp.period}
-                                            </span>
-                                          )}
                                         </div>
 
-                                        {/* Line 2: Company (Left) & Location (Right) */}
-                                        {(hasCompany || hasLocation) && (
-                                          <div className="flex items-baseline justify-between text-[10.5px] leading-snug opacity-90 pb-0.5">
-                                            <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
-                                              {hasCompany ? exp.company : ''}
-                                            </span>
+                                        {/* Line 2: Company / Institution • Location • Dates */}
+                                        {(hasCompany || hasLocation || hasPeriod) && (
+                                          <div className="text-[10.5px] leading-snug opacity-90 pb-0.5">
+                                            {hasCompany && (
+                                              <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                                {exp.company}
+                                              </span>
+                                            )}
                                             {hasLocation && (
-                                              <span className="opacity-80 shrink-0 pl-2" style={{ color: activeStyle.theme.textColor }}>
-                                                {exp.location}
+                                              <span className={`opacity-75 ${hasCompany ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.textColor }}>
+                                                {hasCompany ? '• ' : ''}{exp.location}
+                                              </span>
+                                            )}
+                                            {hasPeriod && (
+                                              <span className={`font-semibold opacity-80 ${(hasCompany || hasLocation) ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.secondaryColor }}>
+                                                {(hasCompany || hasLocation) ? '• ' : ''}{exp.period}
                                               </span>
                                             )}
                                           </div>
