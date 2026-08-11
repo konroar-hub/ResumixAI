@@ -1,6 +1,9 @@
 import React from 'react';
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, StyleSheet, Font } from '@react-pdf/renderer';
 import { MasterProfile, ResumeItem, ResumeStyle, ExperienceItem, BulletItem } from '../types';
+
+// Disable auto-hyphenation (prevents 'orches-tration' line breaks)
+Font.registerHyphenationCallback(word => [word]);
 
 // Section Order Constants
 const SECTION_ORDER = ['about', 'skills', 'experience', 'project', 'education'];
@@ -55,10 +58,10 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
 
   const styles = StyleSheet.create({
     page: {
-      paddingTop: layout === 'header-banner' ? 0 : 32,
-      paddingBottom: 32,
-      paddingLeft: layout === 'brand-margin-stripe' ? 44 : 36,
-      paddingRight: 36,
+      paddingTop: layout === 'header-banner' ? 0 : 28,
+      paddingBottom: 28,
+      paddingLeft: layout === 'brand-margin-stripe' ? 38 : 28,
+      paddingRight: 28,
       backgroundColor: bgColor,
       fontFamily: fontFamily
     },
@@ -242,7 +245,7 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     bulletItem: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 2.5
+      marginBottom: 3
     },
     bulletSymbol: {
       width: 10,
@@ -252,9 +255,9 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     },
     bulletContent: {
       flex: 1,
-      fontSize: 9.5,
+      fontSize: 9.0,
       color: textColor,
-      lineHeight: 1.35
+      lineHeight: 1.4
     }
   });
 
