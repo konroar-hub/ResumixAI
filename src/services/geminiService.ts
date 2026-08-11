@@ -193,7 +193,8 @@ ${jobPostingText.slice(0, 4000)}`;
       generatedAboutCard: parsed.generatedAboutCard || undefined
     };
   } catch (error) {
-    console.error('Gemini tailoring error:', error);
+    console.error('Gemini tailor resume error:', error);
+    if (isRateLimitError(error)) throw error;
     const matched = (masterProfile.experiences || []).slice(0, 3).map(e => e.id);
     return {
       selectedCardIds: matched,
@@ -366,6 +367,7 @@ Return rewritten bullet statement only without quotes:`;
     return (response.text || rawBulletText).trim().replace(/^["']|["']$/g, '');
   } catch (error) {
     console.error('Gemini bullet enhancer error:', error);
+    if (isRateLimitError(error)) throw error;
     return rawBulletText;
   }
 }
@@ -455,6 +457,7 @@ ${candidateContextText ? candidateContextText.slice(0, 3000) : 'Full stack softw
     };
   } catch (error) {
     console.error('Gemini job analysis error:', error);
+    if (isRateLimitError(error)) throw error;
     return {
       roleTitle: 'Tailored Target Role',
       companyName: 'Target Enterprise',
