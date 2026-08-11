@@ -10,7 +10,30 @@ summary: ""
 experiences: []
 `;
 
-export const DEFAULT_JOB_TRACKER: JobRecord[] = [];
+export const DEFAULT_JOB_TRACKER: JobRecord[] = [
+  {
+    id: 'job-mock-1',
+    company: 'OpenAI',
+    title: 'Senior AI Systems Engineer',
+    dateAdded: '2026-08-10',
+    status: 'Interviewing',
+    matchScore: 94,
+    confidenceScore: 96,
+    description: 'Lead evaluation pipelines and multi-model LLM orchestration.',
+    resumeTitle: 'Product Analyst'
+  },
+  {
+    id: 'job-mock-2',
+    company: 'Anthropic',
+    title: 'Product Evaluation Engineer',
+    dateAdded: '2026-08-08',
+    status: 'Applied',
+    matchScore: 88,
+    confidenceScore: 91,
+    description: 'Architect benchmark models for frontier AI capabilities.',
+    resumeTitle: 'Product Analyst'
+  }
+];
 
 export const INITIAL_RESUMES: ResumeItem[] = [];
 

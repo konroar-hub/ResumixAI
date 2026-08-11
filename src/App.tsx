@@ -620,7 +620,8 @@ export default function App() {
         matchedKeywords: analysis.matchedKeywords,
         missingKeywords: analysis.missingKeywords,
         strengths: analysis.strengths,
-        gaps: analysis.gaps
+        gaps: analysis.gaps,
+        confidenceScore: analysis.confidenceScore
       };
 
       setJobsList(prev => prev.map(j => {
@@ -630,6 +631,7 @@ export default function App() {
           title: j.title === 'Tailored Target Role' || j.title === 'Target Role' || !j.title ? analysis.roleTitle : j.title,
           company: j.company === 'Target Enterprise' || j.company === 'Target Company' || !j.company ? analysis.companyName : j.company,
           matchScore: analysis.matchScore,
+          confidenceScore: analysis.confidenceScore,
           atsAnalysisDetails: updatedDetails
         };
       }));
@@ -2520,33 +2522,31 @@ export default function App() {
                                 const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
                                 return (
                                       <div key={exp.id} className={`w-full pdf-card-block mb-3.5 space-y-0.5 ${activeStyle.theme.layout === 'cards-modern' ? 'p-3.5 rounded-xl border shadow-sm' : ''}`} style={{ backgroundColor: activeStyle.theme.layout === 'cards-modern' ? (activeStyle.theme.cardBgColor || activeStyle.theme.bgColor) : 'transparent', borderColor: activeStyle.theme.dividerColor }}>
-                                        {/* Line 1: Job Title / Degree Title */}
-                                        <div className="text-[11.5px] leading-snug">
-                                           <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
-                                             {exp.title}
-                                           </span>
-                                         </div>
+                                        {/* Line 1: Job Title / Degree (Left) & Dates (Right) */}
+                                        <div className="flex items-baseline justify-between text-[11.5px] leading-snug">
+                                          <span className="font-bold" style={{ color: activeStyle.theme.textColor }}>
+                                            {exp.title}
+                                          </span>
+                                          {hasPeriod && (
+                                            <span className="font-semibold text-[10.5px] shrink-0 pl-2" style={{ color: activeStyle.theme.secondaryColor }}>
+                                              {exp.period}
+                                            </span>
+                                          )}
+                                        </div>
 
-                                         {/* Line 2: Company / Institution • Location • Dates */}
-                                         {(hasCompany || hasLocation || hasPeriod) && (
-                                           <div className="text-[10.5px] leading-snug opacity-90">
-                                             {hasCompany && (
-                                               <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
-                                                 {exp.company}
-                                               </span>
-                                             )}
-                                             {hasLocation && (
-                                               <span className={`opacity-75 ${hasCompany ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.textColor }}>
-                                                 {hasCompany ? '• ' : ''}{exp.location}
-                                               </span>
-                                             )}
-                                             {hasPeriod && (
-                                               <span className={`font-semibold opacity-80 ${(hasCompany || hasLocation) ? 'pl-1.5' : ''}`} style={{ color: activeStyle.theme.secondaryColor }}>
-                                                 {(hasCompany || hasLocation) ? '• ' : ''}{exp.period}
-                                               </span>
-                                             )}
-                                           </div>
-                                         )}
+                                        {/* Line 2: Company (Left) & Location (Right) */}
+                                        {(hasCompany || hasLocation) && (
+                                          <div className="flex items-baseline justify-between text-[10.5px] leading-snug opacity-90 pb-0.5">
+                                            <span className="font-medium italic" style={{ color: activeStyle.theme.secondaryColor }}>
+                                              {hasCompany ? exp.company : ''}
+                                            </span>
+                                            {hasLocation && (
+                                              <span className="opacity-80 shrink-0 pl-2" style={{ color: activeStyle.theme.textColor }}>
+                                                {exp.location}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
                                         {exp.skills && exp.skills.length > 0 && (
                                           <div className="text-[10px] opacity-70 text-left pb-0.5" style={{ color: activeStyle.theme.accentColor }}>
                                             Skills: {exp.skills.join(', ')}
@@ -2909,7 +2909,17 @@ export default function App() {
                           company: analysis.companyName,
                           dateAdded: new Date().toISOString().split('T')[0],
                           status: 'Draft',
-                          description: jobDescription.trim()
+                          matchScore: analysis.matchScore,
+                          confidenceScore: analysis.confidenceScore,
+                          description: jobDescription.trim(),
+                          atsAnalysisDetails: {
+                            fitSummary: analysis.fitSummary,
+                            matchedKeywords: analysis.matchedKeywords,
+                            missingKeywords: analysis.missingKeywords,
+                            strengths: analysis.strengths,
+                            gaps: analysis.gaps,
+                            confidenceScore: analysis.confidenceScore
+                          }
                         };
                         setJobsList(prev => [newRecord, ...prev]);
                         setJobDescription('');
@@ -2948,7 +2958,7 @@ export default function App() {
                         <th className="p-4">Description</th>
                         <th className="p-4">Date Added</th>
                         <th className="p-4">Status</th>
-                        <th className="p-4">ATS Match Score</th>
+                        <th className="p-4">Score</th>
                         <th className="p-4 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2963,6 +2973,9 @@ export default function App() {
                         jobsList.map((job) => {
                           const linkedRes = resumes.find(r => r.id === job.resumeId);
                           const linkedResTitle = job.resumeTitle || linkedRes?.title;
+                          const hasMatchScore = typeof job.matchScore === 'number';
+                          const hasConfidenceScore = typeof job.confidenceScore === 'number';
+
                           return (
                             <tr key={job.id} className="hover:bg-slate-850/50 transition">
                               <td className="p-4 font-semibold text-slate-100">{job.title}</td>
@@ -3022,25 +3035,50 @@ export default function App() {
                                     <span className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin"></span>
                                     <span>Analyzing Fit...</span>
                                   </div>
-                                ) : typeof job.matchScore === 'number' ? (
-                                  <div className="flex items-center space-x-2">
-                                    <div className="w-16 sm:w-20 bg-slate-800 h-2 rounded-full overflow-hidden shrink-0">
-                                      <div
-                                        className={`h-full rounded-full ${
-                                          job.matchScore >= 80 ? 'bg-emerald-500' : job.matchScore >= 60 ? 'bg-amber-500' : 'bg-rose-500'
-                                        }`}
-                                        style={{ width: `${job.matchScore}%` }}
-                                      />
+                                ) : (hasMatchScore || hasConfidenceScore) ? (
+                                  <div className="space-y-1.5 min-w-[145px]">
+                                    {/* Bar 1: ATS Match */}
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="text-slate-400 font-medium text-[10px]">ATS Match</span>
+                                      <div className="flex items-center space-x-1.5">
+                                        <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full rounded-full ${
+                                              (job.matchScore || 0) >= 80 ? 'bg-emerald-500' : (job.matchScore || 0) >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                                            }`}
+                                            style={{ width: `${job.matchScore || 0}%` }}
+                                          />
+                                        </div>
+                                        <span className="font-mono text-emerald-400 font-bold text-[11px]">{job.matchScore || 0}%</span>
+                                      </div>
                                     </div>
-                                    <span className="font-mono text-emerald-400 font-bold">{job.matchScore}%</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setViewingAtsAnalysisJob(job)}
-                                      className="p-1 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-400 hover:text-indigo-300 rounded transition shrink-0 ml-1"
-                                      title="Open Advanced ATS & LLM Fit Analysis Report"
-                                    >
-                                      <FileText className="w-3.5 h-3.5" />
-                                    </button>
+
+                                    {/* Bar 2: Confidence */}
+                                    <div className="flex items-center justify-between text-[11px]">
+                                      <span className="text-slate-400 font-medium text-[10px]">Confidence</span>
+                                      <div className="flex items-center space-x-1.5">
+                                        <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                                            style={{ width: `${job.confidenceScore || 90}%` }}
+                                          />
+                                        </div>
+                                        <span className="font-mono text-indigo-300 font-bold text-[11px]">{job.confidenceScore || 90}%</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Action Link to open Modal */}
+                                    <div className="pt-0.5 flex items-center justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewingAtsAnalysisJob(job)}
+                                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 hover:underline"
+                                        title="Open Advanced ATS & LLM Fit Analysis Report"
+                                      >
+                                        <FileText className="w-3 h-3 text-indigo-400" />
+                                        <span>Full Analysis</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 ) : (
                                   <button
@@ -3049,7 +3087,7 @@ export default function App() {
                                     className="flex items-center space-x-1.5 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition"
                                   >
                                     <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                    <span>Analyze ATS Match</span>
+                                    <span>Analyze Fit</span>
                                   </button>
                                 )}
                               </td>
@@ -3475,14 +3513,18 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1.5 bg-indigo-950/80 border border-indigo-500/40 px-3 py-1.5 rounded-xl">
-                  <span className="text-xs text-slate-400 font-medium">ATS Match:</span>
-                  <span className="text-sm font-bold font-mono text-emerald-400">{viewingAtsAnalysisJob.matchScore}%</span>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 bg-indigo-950/80 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
+                  <span className="text-[11px] text-slate-400 font-medium">ATS Match:</span>
+                  <span className="text-xs font-bold font-mono text-emerald-400">{viewingAtsAnalysisJob.matchScore || 0}%</span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-indigo-950/80 border border-purple-500/40 px-2.5 py-1 rounded-xl">
+                  <span className="text-[11px] text-slate-400 font-medium">Confidence:</span>
+                  <span className="text-xs font-bold font-mono text-indigo-300">{viewingAtsAnalysisJob.confidenceScore || 90}%</span>
                 </div>
                 <button
                   onClick={() => setViewingAtsAnalysisJob(null)}
-                  className="text-slate-400 hover:text-slate-200 text-xs font-mono p-1"
+                  className="text-slate-400 hover:text-slate-200 text-xs font-mono p-1 ml-1"
                 >
                   ✕
                 </button>

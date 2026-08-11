@@ -222,16 +222,26 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     entryBlock: {
       marginBottom: 12
     },
+    entryRowSpaceBetween: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+      marginBottom: 2
+    },
     entryTitleLine: {
       fontSize: 10.5,
       fontWeight: 'bold',
-      color: textColor,
-      marginBottom: 3
+      color: textColor
+    },
+    entryDateLine: {
+      fontSize: 9.5,
+      fontWeight: 'bold',
+      color: secondaryColor
     },
     entrySubLine: {
       fontSize: 9.5,
       color: secondaryColor,
-      marginBottom: 4
+      marginBottom: 3
     },
     skillsSubLine: {
       fontSize: 9,
@@ -395,23 +405,22 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
                 const hasLocation = exp.location && exp.location.trim() && exp.location.trim() !== 'Remote' && exp.location.trim() !== 'N/A';
                 const hasPeriod = exp.period && exp.period.trim() && exp.period.trim() !== 'N/A';
 
-                const subLineParts: string[] = [];
-                if (hasCompany) subLineParts.push(exp.company);
-                if (hasLocation) subLineParts.push(exp.location);
-                if (hasPeriod) subLineParts.push(exp.period);
-
                 const isCardLayout = layout === 'cards-modern';
 
                 return (
                   <View key={exp.id} style={isCardLayout ? styles.entryCardBlock : styles.entryBlock} wrap={false}>
-                    {/* Line 1: Job Title / Degree */}
-                    <Text style={styles.entryTitleLine}>{exp.title}</Text>
+                    {/* Line 1: Job Title / Degree (Left) & Dates (Right) */}
+                    <View style={styles.entryRowSpaceBetween}>
+                      <Text style={styles.entryTitleLine}>{exp.title}</Text>
+                      {hasPeriod && <Text style={styles.entryDateLine}>{exp.period}</Text>}
+                    </View>
 
-                    {/* Line 2: Company • Location • Dates */}
-                    {subLineParts.length > 0 && (
-                      <Text style={styles.entrySubLine}>
-                        {subLineParts.join('  •  ')}
-                      </Text>
+                    {/* Line 2: Company (Left) & Location (Right) */}
+                    {(hasCompany || hasLocation) && (
+                      <View style={styles.entryRowSpaceBetween}>
+                        <Text style={styles.entrySubLine}>{hasCompany ? exp.company : ''}</Text>
+                        <Text style={styles.entrySubLine}>{hasLocation ? exp.location : ''}</Text>
+                      </View>
                     )}
 
                     {/* Line 3: Skills */}

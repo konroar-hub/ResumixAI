@@ -56,6 +56,7 @@ export interface AtsAnalysisDetails {
   missingKeywords: string[];
   strengths?: string[];
   gaps?: string[];
+  confidenceScore?: number;
 }
 
 export interface JobRecord {
@@ -65,6 +66,7 @@ export interface JobRecord {
   dateAdded: string;
   status: 'Draft' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
   matchScore?: number;
+  confidenceScore?: number;
   description?: string;
   resumeId?: string;
   resumeTitle?: string;
