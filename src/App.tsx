@@ -133,30 +133,6 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resumes' | 'skills' | 'feed' | 'jobs'>('resumes');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [apiRateLimitNotice, setApiRateLimitNotice] = useState<{
-    title: string;
-    message: string;
-    waitSeconds: number;
-  } | null>(null);
-
-  const handleApiError = (err: any) => {
-    const errStr = String(err?.message || err || '').toLowerCase();
-    if (
-      errStr.includes('429') ||
-      errStr.includes('resource_exhausted') ||
-      errStr.includes('quota') ||
-      errStr.includes('rate limit') ||
-      errStr.includes('too many requests')
-    ) {
-      setApiRateLimitNotice({
-        title: 'High Request Volume',
-        message: 'Our AI service is currently experiencing high demand. Please wait a moment before trying again.',
-        waitSeconds: 30
-      });
-      return true;
-    }
-    return false;
-  };
 
   useEffect(() => {
     try {
@@ -661,7 +637,6 @@ export default function App() {
       }));
     } catch (e) {
       console.error('ATS Match Analysis Error:', e);
-      handleApiError(e);
     } finally {
       setAnalyzingJobId(null);
     }
@@ -2912,69 +2887,6 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-800 space-y-3 sm:space-y-4">
-                <h3 className="text-sm font-semibold text-slate-200 flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-indigo-400" />
-                  <span>Job Posting Tailor Engine</span>
-                </h3>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <textarea
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    placeholder="Paste job posting text or requirements here to analyze ATS keywords..."
-                    className="w-full sm:flex-1 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 h-20 resize-none"
-                  />
-                  <button
-                    onClick={async () => {
-                      if (!jobDescription.trim()) return;
-                      setIsLlmGenerating(true);
-                      try {
-                        const analysis = await analyzeJobMatchWithGemini(jobDescription);
-                        const newRecord: JobRecord = {
-                          id: `job-${Date.now()}`,
-                          title: analysis.roleTitle,
-                          company: analysis.companyName,
-                          dateAdded: new Date().toISOString().split('T')[0],
-                          status: 'Draft',
-                          matchScore: analysis.matchScore,
-                          confidenceScore: analysis.confidenceScore,
-                          description: jobDescription.trim(),
-                          atsAnalysisDetails: {
-                            fitSummary: analysis.fitSummary,
-                            matchedKeywords: analysis.matchedKeywords,
-                            missingKeywords: analysis.missingKeywords,
-                            strengths: analysis.strengths,
-                            gaps: analysis.gaps,
-                            confidenceScore: analysis.confidenceScore
-                          }
-                        };
-                        setJobsList(prev => [newRecord, ...prev]);
-                        setJobDescription('');
-                      } catch (e) {
-                        console.error('AI Job Matcher error:', e);
-                        handleApiError(e);
-                      } finally {
-                        setIsLlmGenerating(false);
-                      }
-                    }}
-                    disabled={!jobDescription.trim() || isLlmGenerating}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold text-xs px-4 rounded-lg flex items-center justify-center space-x-2 self-stretch sm:self-end py-3 transition shadow-md whitespace-nowrap shrink-0 w-full sm:w-auto"
-                  >
-                    {isLlmGenerating ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span>Analyzing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>AI Tailor & Track</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
                 <div className="overflow-x-auto w-full">
                   <table className="w-full text-left text-xs min-w-[750px]">
@@ -3799,7 +3711,6 @@ export default function App() {
                         }
                       } catch (e) {
                         console.error('Generate/Refine AI Style Error:', e);
-                        handleApiError(e);
                       } finally {
                         setIsGeneratingAiStyle(false);
                       }
@@ -3867,38 +3778,6 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Generic 429 / High Volume Rate Limit Alert Modal */}
-      {apiRateLimitNotice && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-amber-500/40 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 text-center">
-            <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-amber-400">
-              <Cpu className="w-6 h-6 animate-pulse" />
-            </div>
-            
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-100">
-                {apiRateLimitNotice.title}
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {apiRateLimitNotice.message}
-              </p>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs font-mono text-amber-300 flex items-center justify-center space-x-2">
-              <span>⏱ Please wait ~{apiRateLimitNotice.waitSeconds} seconds before trying your request again.</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setApiRateLimitNotice(null)}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2.5 rounded-xl transition shadow"
-            >
-              Understand & Close
-            </button>
           </div>
         </div>
       )}
