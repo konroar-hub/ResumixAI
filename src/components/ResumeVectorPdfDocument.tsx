@@ -268,6 +268,8 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     ? activeResume.selectedSkills
     : [];
 
+  const candidateRoleTitle = activeResume?.targetRole || parsedProfile?.title;
+
   return (
     <Document title={`${parsedProfile?.name || 'Candidate'} - ${activeResume?.title || 'Resume'}`}>
       <Page size="LETTER" style={styles.page}>
@@ -280,8 +282,8 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
         {layout === 'header-banner' ? (
           <View style={styles.headerBannerBox}>
             <Text style={styles.headerBannerName}>{parsedProfile?.name || 'KONSTANTIN VICTORIA'}</Text>
-            {parsedProfile?.title && (
-              <Text style={styles.headerBannerTitle}>{parsedProfile.title}</Text>
+            {candidateRoleTitle && (
+              <Text style={styles.headerBannerTitle}>{candidateRoleTitle}</Text>
             )}
             <Text style={styles.headerBannerContact}>
               {[parsedProfile?.email, parsedProfile?.phone, parsedProfile?.location]
@@ -292,8 +294,8 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
         ) : (
           <View style={styles.headerBox}>
             <Text style={styles.candidateName}>{parsedProfile?.name || 'KONSTANTIN VICTORIA'}</Text>
-            {parsedProfile?.title && (
-              <Text style={styles.candidateTitle}>{parsedProfile.title}</Text>
+            {candidateRoleTitle && (
+              <Text style={styles.candidateTitle}>{candidateRoleTitle}</Text>
             )}
             <Text style={styles.contactLine}>
               {[parsedProfile?.email, parsedProfile?.phone, parsedProfile?.location]
