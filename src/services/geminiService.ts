@@ -446,10 +446,10 @@ export async function generateResumeStyleWithGemini(userDesignPrompt: string): P
   }
 
   try {
-    const prompt = `You are an elite, world-class executive resume designer and ATS typography architect.
+    const prompt = `You are an elite, world-class executive resume designer and ATS typography architect building themes for ResumixAI's Programmatic Vector PDF Engine.
 Generate a distinctive, highly aesthetic, readable, and visually stunning resume template based on the user's design request: "${userDesignPrompt}"
 
-CORE DESIGN PARADIGMS & GUIDELINES:
+CORE DESIGN PARADIGMS & GUIDELINES FOR VECTOR PDF ENGINE:
 1. LIGHT BACKGROUNDS ONLY (MANDATORY FOR PRINT & ATS COMPATIBILITY):
    - 'bgColor' MUST ALWAYS BE A CLEAN LIGHT BACKGROUND (#ffffff, #f8fafc, #f5f3ff, #fafafa). Dark mode styles or dark page backgrounds (#0f172a, #000000, #090d16) are STRICTLY FORBIDDEN to ensure perfect PDF printing and 100% ATS compliance.
    - 'textColor' MUST be deep high-contrast dark charcoal (#0f172a, #18181b, #000000, #1e293b).
@@ -459,16 +459,13 @@ CORE DESIGN PARADIGMS & GUIDELINES:
    - 'inter' or 'outfit': Modern tech, engineering, AI, product roles.
    - 'space-grotesk' or 'mono': Systems, infrastructure, cybersecurity, backend.
    - 'serif' or 'playfair': Executive leadership, legal, academia, finance.
-3. HARMONIOUS PALETTES:
-   - Primary ('primaryColor'): Dominant brand/accent color for headers and titles.
-   - Secondary ('secondaryColor'): Dates, company names, subtitle accents.
-   - Divider ('dividerColor'): Subtle borders (#cbd5e1, #e2e8f0) matching the overall theme background.
-   - Accent ('accentColor'): Highlight skill badges, bullet icons, key metrics.
- 4. STRUCTURAL ELEGANCE: Choose an appropriate 100% ATS-compliant single-column layout:
-    - 'single-column': Pure ATS compliance, executive hierarchy.
-    - 'cards-modern': Contemporary rounded card containers.
-    - 'header-banner': Full-width accent banner header for executive presence.
-    - 'brand-margin-stripe': Sleek vertical accent stripe along the left page edge.
+3. VECTOR PDF LAYOUT ARCHITECTURE:
+   - 'single-column': Pure ATS compliance, executive hierarchy.
+   - 'cards-modern': Contemporary rounded card containers with subtle cardBgColor tint.
+   - 'header-banner': Full-width accent banner header for executive presence.
+   - 'brand-margin-stripe': Sleek vertical accent stripe along the left page edge.
+4. SECTION HEADER STYLING:
+   - Choose sectionHeaderStyle: 'uppercase-accent' (clean rule line), 'pill-badge' (rounded colored box), 'minimal-left-border' (thick left accent bar), or 'filled-badge'.
 
 Output JSON ONLY matching this exact structure:
 {

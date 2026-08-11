@@ -19,6 +19,13 @@ const getBulletString = (bullet: string | BulletItem): string => {
   return bullet.text || '';
 };
 
+// Map custom font families to standard PDF fonts
+const getPdfFontFamily = (family?: string): string => {
+  if (family === 'serif' || family === 'playfair') return 'Times-Roman';
+  if (family === 'mono' || family === 'space-grotesk') return 'Courier';
+  return 'Helvetica';
+};
+
 interface Props {
   parsedProfile: MasterProfile;
   activeResume: ResumeItem;
@@ -37,15 +44,64 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
   const textColor = theme.textColor || '#1e293b';
   const bgColor = theme.bgColor || '#ffffff';
   const dividerColor = theme.dividerColor || '#cbd5e1';
+  const cardBgColor = theme.cardBgColor || '#f8fafc';
+  const headerBgColor = theme.headerBgColor || primaryColor;
+  const stripeColor = theme.stripeColor || primaryColor;
+
+  const fontFamily = getPdfFontFamily(theme.fontFamily);
+  const layout = theme.layout || 'single-column';
+  const headerStyle = theme.sectionHeaderStyle || 'uppercase-accent';
+  const skillsDisplayStyle = theme.skillsDisplayStyle || 'pill-badges';
 
   const styles = StyleSheet.create({
     page: {
-      paddingTop: 32,
+      paddingTop: layout === 'header-banner' ? 0 : 32,
       paddingBottom: 32,
-      paddingLeft: 36,
+      paddingLeft: layout === 'brand-margin-stripe' ? 44 : 36,
       paddingRight: 36,
       backgroundColor: bgColor,
-      fontFamily: 'Helvetica'
+      fontFamily: fontFamily
+    },
+    brandStripe: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      bottom: 0,
+      width: 10,
+      backgroundColor: stripeColor
+    },
+    headerBannerBox: {
+      backgroundColor: headerBgColor,
+      paddingTop: 28,
+      paddingBottom: 18,
+      paddingLeft: 36,
+      paddingRight: 36,
+      marginBottom: 16,
+      marginLeft: layout === 'brand-margin-stripe' ? -44 : -36,
+      marginRight: -36
+    },
+    headerBannerName: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: theme.headerTextColor || '#ffffff',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 4,
+      textAlign: theme.headerAlignment === 'center' ? 'center' : 'left'
+    },
+    headerBannerTitle: {
+      fontSize: 11,
+      fontWeight: 'bold',
+      color: theme.headerTextColor || '#ffffff',
+      opacity: 0.9,
+      marginBottom: 6,
+      textAlign: theme.headerAlignment === 'center' ? 'center' : 'left'
+    },
+    headerBannerContact: {
+      fontSize: 9.5,
+      color: theme.headerTextColor || '#ffffff',
+      opacity: 0.85,
+      textAlign: theme.headerAlignment === 'center' ? 'center' : 'left'
     },
     headerBox: {
       marginBottom: 14,
@@ -76,7 +132,37 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
     sectionContainer: {
       marginBottom: 12
     },
-    sectionTitle: {
+    sectionHeaderWrapper: {
+      marginBottom: 6
+    },
+    sectionTitlePill: {
+      fontSize: 11,
+      fontWeight: 'bold',
+      color: '#ffffff',
+      backgroundColor: primaryColor,
+      paddingTop: 3,
+      paddingBottom: 3,
+      paddingLeft: 8,
+      paddingRight: 8,
+      borderRadius: 4,
+      alignSelf: 'flex-start',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 6
+    },
+    sectionTitleMinimalLeft: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: primaryColor,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      borderLeftWidth: 3,
+      borderLeftColor: primaryColor,
+      borderLeftStyle: 'solid',
+      paddingLeft: 6,
+      marginBottom: 6
+    },
+    sectionTitleStandard: {
       fontSize: 12,
       fontWeight: 'bold',
       color: primaryColor,
@@ -97,10 +183,38 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
       color: textColor,
       lineHeight: 1.4
     },
+    skillsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 2
+    },
+    skillBadge: {
+      backgroundColor: cardBgColor,
+      borderWidth: 0.5,
+      borderColor: dividerColor,
+      borderRadius: 4,
+      paddingTop: 2,
+      paddingBottom: 2,
+      paddingLeft: 6,
+      paddingRight: 6,
+      marginRight: 4,
+      marginBottom: 4,
+      fontSize: 9,
+      fontWeight: 'bold',
+      color: textColor
+    },
     skillsText: {
       fontSize: 9.5,
       color: textColor,
       lineHeight: 1.4
+    },
+    entryCardBlock: {
+      backgroundColor: cardBgColor,
+      borderWidth: 0.5,
+      borderColor: dividerColor,
+      borderRadius: 6,
+      padding: 8,
+      marginBottom: 9
     },
     entryBlock: {
       marginBottom: 9
@@ -157,18 +271,37 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
   return (
     <Document title={`${parsedProfile?.name || 'Candidate'} - ${activeResume?.title || 'Resume'}`}>
       <Page size="LETTER" style={styles.page}>
-        {/* Header Block */}
-        <View style={styles.headerBox}>
-          <Text style={styles.candidateName}>{parsedProfile?.name || 'KONSTANTIN VICTORIA'}</Text>
-          {parsedProfile?.title && (
-            <Text style={styles.candidateTitle}>{parsedProfile.title}</Text>
-          )}
-          <Text style={styles.contactLine}>
-            {[parsedProfile?.email, parsedProfile?.phone, parsedProfile?.location]
-              .filter(Boolean)
-              .join('  •  ')}
-          </Text>
-        </View>
+        {/* Brand Margin Left Stripe */}
+        {layout === 'brand-margin-stripe' && (
+          <View style={styles.brandStripe} fixed />
+        )}
+
+        {/* Header Block: Header Banner vs Standard Minimal */}
+        {layout === 'header-banner' ? (
+          <View style={styles.headerBannerBox}>
+            <Text style={styles.headerBannerName}>{parsedProfile?.name || 'KONSTANTIN VICTORIA'}</Text>
+            {parsedProfile?.title && (
+              <Text style={styles.headerBannerTitle}>{parsedProfile.title}</Text>
+            )}
+            <Text style={styles.headerBannerContact}>
+              {[parsedProfile?.email, parsedProfile?.phone, parsedProfile?.location]
+                .filter(Boolean)
+                .join('  •  ')}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.headerBox}>
+            <Text style={styles.candidateName}>{parsedProfile?.name || 'KONSTANTIN VICTORIA'}</Text>
+            {parsedProfile?.title && (
+              <Text style={styles.candidateTitle}>{parsedProfile.title}</Text>
+            )}
+            <Text style={styles.contactLine}>
+              {[parsedProfile?.email, parsedProfile?.phone, parsedProfile?.location]
+                .filter(Boolean)
+                .join('  •  ')}
+            </Text>
+          </View>
+        )}
 
         {/* 1. About Me */}
         {(() => {
@@ -181,8 +314,16 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
 
           return (
             <View style={styles.sectionContainer} wrap={false}>
-              <Text style={styles.sectionTitle}>ABOUT ME</Text>
-              <View style={styles.sectionDivider} />
+              {headerStyle === 'pill-badge' || headerStyle === 'filled-badge' ? (
+                <Text style={styles.sectionTitlePill}>ABOUT ME</Text>
+              ) : headerStyle === 'minimal-left-border' ? (
+                <Text style={styles.sectionTitleMinimalLeft}>ABOUT ME</Text>
+              ) : (
+                <View>
+                  <Text style={styles.sectionTitleStandard}>ABOUT ME</Text>
+                  <View style={styles.sectionDivider} />
+                </View>
+              )}
               {totalAbout.map((exp: ExperienceItem) => (
                 <Text key={exp.id} style={styles.aboutText}>
                   {exp.bullets?.[0] ? getBulletString(exp.bullets[0]) : ''}
@@ -195,11 +336,28 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
         {/* 2. Technical Skills & Core Competencies */}
         {activeSkills.length > 0 && (
           <View style={styles.sectionContainer} wrap={false}>
-            <Text style={styles.sectionTitle}>TECHNICAL SKILLS & CORE COMPETENCIES</Text>
-            <View style={styles.sectionDivider} />
-            <Text style={styles.skillsText}>
-              {activeSkills.join('  •  ')}
-            </Text>
+            {headerStyle === 'pill-badge' || headerStyle === 'filled-badge' ? (
+              <Text style={styles.sectionTitlePill}>TECHNICAL SKILLS & CORE COMPETENCIES</Text>
+            ) : headerStyle === 'minimal-left-border' ? (
+              <Text style={styles.sectionTitleMinimalLeft}>TECHNICAL SKILLS & CORE COMPETENCIES</Text>
+            ) : (
+              <View>
+                <Text style={styles.sectionTitleStandard}>TECHNICAL SKILLS & CORE COMPETENCIES</Text>
+                <View style={styles.sectionDivider} />
+              </View>
+            )}
+
+            {skillsDisplayStyle === 'pill-badges' ? (
+              <View style={styles.skillsContainer}>
+                {activeSkills.map((sk: string) => (
+                  <Text key={sk} style={styles.skillBadge}>{sk}</Text>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.skillsText}>
+                {activeSkills.join('  •  ')}
+              </Text>
+            )}
           </View>
         )}
 
@@ -216,8 +374,16 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
 
           return (
             <View key={sec} style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle} wrap={false}>{titleText}</Text>
-              <View style={styles.sectionDivider} wrap={false} />
+              {headerStyle === 'pill-badge' || headerStyle === 'filled-badge' ? (
+                <Text style={styles.sectionTitlePill} wrap={false}>{titleText}</Text>
+              ) : headerStyle === 'minimal-left-border' ? (
+                <Text style={styles.sectionTitleMinimalLeft} wrap={false}>{titleText}</Text>
+              ) : (
+                <View wrap={false}>
+                  <Text style={styles.sectionTitleStandard}>{titleText}</Text>
+                  <View style={styles.sectionDivider} />
+                </View>
+              )}
 
               {totalItems.map((exp: ExperienceItem) => {
                 const hasCompany = exp.company && exp.company.trim() !== 'Personal Project' && exp.company.trim() !== 'N/A';
@@ -229,8 +395,10 @@ export const ResumeVectorPdfDocument: React.FC<Props> = ({
                 if (hasLocation) subLineParts.push(exp.location);
                 if (hasPeriod) subLineParts.push(exp.period);
 
+                const isCardLayout = layout === 'cards-modern';
+
                 return (
-                  <View key={exp.id} style={styles.entryBlock} wrap={false}>
+                  <View key={exp.id} style={isCardLayout ? styles.entryCardBlock : styles.entryBlock} wrap={false}>
                     {/* Line 1: Job Title / Degree */}
                     <Text style={styles.entryTitleLine}>{exp.title}</Text>
 
